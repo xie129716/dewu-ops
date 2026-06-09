@@ -47,21 +47,16 @@ async function callApi(action, params) {
   return data;
 }
 
-async function sendSms(phone) {
+async function sendSms(phone, code) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
+  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_335015865';
 
-  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code');
-  const params = {
+  const data = await callApi('SendSmsVerifyCode', {
     PhoneNumber: phone,
     SignName: signName,
-    OutId: '',
-  };
-  // "验证码" template type — PNV auto-fills the code variable
-  if (templateCode) {
-    params.TemplateCode = templateCode;
-    params.TemplateParam = '{"code":""}';
-  }
-  const data = await callApi('SendSmsVerifyCode', params);
+    TemplateCode: templateCode,
+    TemplateParam: JSON.stringify({ code }),
+  });
 
   if (data.Code !== 'OK') {
     throw new Error(`${data.Message || data.Code}`);
