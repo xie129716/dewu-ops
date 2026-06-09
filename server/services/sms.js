@@ -24,8 +24,6 @@ function createClient() {
  */
 async function sendSms(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
-  const client = createClient();
-
   const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code');
   const client = createClient();
 
