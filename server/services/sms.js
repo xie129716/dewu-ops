@@ -1,20 +1,13 @@
 /**
  * Push.spug.cc SMS service
- * Simple HTTP API — no SDK needed
+ * Uses URL query parameters for sending
  */
 const SMS_URL = process.env.SMS_API_URL || 'https://push.spug.cc/sms/6_AhOhxUT5-_is94VbLSUg';
 
 async function sendSms(phone, code) {
-  const body = {
-    code: code,
-    to: phone,
-  };
+  const url = `${SMS_URL}?to=${encodeURIComponent(phone)}&code=${encodeURIComponent(code)}`;
 
-  const res = await fetch(SMS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(url, { method: 'POST' });
 
   const data = await res.json();
 
