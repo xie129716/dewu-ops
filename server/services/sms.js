@@ -1,10 +1,8 @@
-const DypnsapiClient = require('@alicloud/dypnsapi20170525');
+const DypnsapiClient = require('@alicloud/dypnsapi20170525').default;
+const { SendSmsVerifyCodeRequest, CheckSmsVerifyCodeRequest } = require('@alicloud/dypnsapi20170525');
+const { Config } = require('@alicloud/openapi-client');
 const { getSetting } = require('./storage');
 
-/**
- * Create Alibaba Cloud PNV (号码认证) client.
- * Credentials from env vars or settings table.
- */
 function createClient() {
   const accessKeyId = process.env.ALIBABA_ACCESS_KEY_ID || getSetting(0, 'sms_access_key_id');
   const accessKeySecret = process.env.ALIBABA_ACCESS_KEY_SECRET || getSetting(0, 'sms_access_key_secret');
@@ -13,28 +11,26 @@ function createClient() {
     throw new Error('短信服务未配置：请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET');
   }
 
-  return new DypnsapiClient({
+  return new DypnsapiClient(new Config({
     accessKeyId,
     accessKeySecret,
     endpoint: 'dypnsapi.aliyuncs.com',
-  });
+  }));
 }
 
 /**
- * Send SMS verification code via PNV service.
- * Alibaba Cloud handles code generation + SMS sending.
- * @param {string} phone - Phone number (e.g. 13800138000)
- * @returns {{ bizToken: string, message: string }}
+ * Send SMS verification code via PNV.
  */
 async function sendSmsCode(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
   const client = createClient();
 
-  const result = await client.sendSmsVerifyCode({
+  const req = new SendSmsVerifyCodeRequest({
     phoneNumber: phone,
     signName: signName || undefined,
-    // PNV uses built-in SMS templates — no template code needed
   });
+
+  const result = await client.sendSmsVerifyCode(req);
 
   if (result.body.code !== 'OK') {
     throw new Error(`验证码发送失败: ${result.body.message} (${result.body.code})`);
@@ -44,20 +40,18 @@ async function sendSmsCode(phone) {
 }
 
 /**
- * Check SMS verification code via PNV service.
- * @param {string} phone - Phone number
- * @param {string} code - User-entered 6-digit code
- * @param {string} bizToken - Token from sendSmsCode response
- * @returns {boolean} - true if valid
+ * Check SMS verification code via PNV.
  */
 async function checkSmsCode(phone, code, bizToken) {
   const client = createClient();
 
-  const result = await client.checkSmsVerifyCode({
+  const req = new CheckSmsVerifyCodeRequest({
     phoneNumber: phone,
     verifyCode: code,
     bizToken: bizToken,
   });
+
+  const result = await client.checkSmsVerifyCode(req);
 
   if (result.body.code !== 'OK') {
     if (result.body.code === 'INVALID_VERIFY_CODE') {
