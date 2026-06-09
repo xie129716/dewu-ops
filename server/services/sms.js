@@ -23,10 +23,12 @@ async function sendSms(phone, code) {
   const client = createClient();
 
   // PNV SendSmsVerifyCode
+  const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
   const params = {
     PhoneNumber: phone,
+    SignName: signName,
     TemplateCode: templateCode,
-    TemplateParam: JSON.stringify({ code, min: '4', max: '6' }),
+    TemplateParam: JSON.stringify({ code, min: '6' }),
   };
 
   const result = await client.request('SendSmsVerifyCode', params);
