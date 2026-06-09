@@ -9,27 +9,29 @@ function createClient() {
     throw new Error('短信服务未配置');
   }
 
-  // Use regular SMS endpoint (not PNV)
+  // Use PNV endpoint
   return new POPClient({
     accessKeyId,
     accessKeySecret,
-    endpoint: 'https://dysmsapi.aliyuncs.com',
+    endpoint: 'https://dypnsapi.aliyuncs.com',
     apiVersion: '2017-05-25',
   });
 }
 
 async function sendSms(phone, code) {
-  const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
   const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_335015865';
   const client = createClient();
 
-  // Standard SMS API: SendSms
-  const result = await client.request('SendSms', {
-    PhoneNumbers: phone,
-    SignName: signName,
+  // PNV SendSmsVerifyCode — no SignName (use default)
+  const params = {
+    PhoneNumber: phone,
     TemplateCode: templateCode,
     TemplateParam: JSON.stringify({ code }),
-  });
+  };
+  const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
+  if (signName) params.SignName = signName;
+
+  const result = await client.request('SendSmsVerifyCode', params);
 
   if (result.Code !== 'OK') {
     throw new Error(`${result.Message}`);
