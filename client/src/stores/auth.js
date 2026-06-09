@@ -27,15 +27,13 @@ export const useAuthStore = defineStore('auth', () => {
     return data;
   }
 
-  async function register(usernameOrPhone, codeOrPassword, maybePassword) {
-    // Phone-based registration: (phone, code, password)
-    // Username-based registration: (username, password)
+  async function register(usernameOrPhone, codeOrPassword, maybePassword, bizToken) {
+    // Phone-based: (phone, code, password, bizToken)
+    // Username-based: (username, password)
     let payload;
-    if (maybePassword) {
-      // Phone + code + password
-      payload = { phone: usernameOrPhone, code: codeOrPassword, password: maybePassword };
+    if (bizToken || maybePassword) {
+      payload = { phone: usernameOrPhone, code: codeOrPassword, password: maybePassword, bizToken };
     } else {
-      // Username + password (legacy)
       payload = { username: usernameOrPhone, password: codeOrPassword };
     }
     const data = await api.post('/auth/register', payload);

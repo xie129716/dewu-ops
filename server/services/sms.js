@@ -1,9 +1,9 @@
-const DysmsapiClient = require('@alicloud/dysmsapi20170525');
+const DypnsapiClient = require('@alicloud/dypnsapi20170525');
 const { getSetting } = require('./storage');
 
 /**
- * Create Alibaba Cloud SMS client.
- * Credentials loaded from env vars or settings table.
+ * Create Alibaba Cloud PNV (号码认证) client.
+ * Credentials from env vars or settings table.
  */
 function createClient() {
   const accessKeyId = process.env.ALIBABA_ACCESS_KEY_ID || getSetting(0, 'sms_access_key_id');
@@ -13,38 +13,60 @@ function createClient() {
     throw new Error('短信服务未配置：请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET');
   }
 
-  return new DysmsapiClient({
+  return new DypnsapiClient({
     accessKeyId,
     accessKeySecret,
-    endpoint: 'dysmsapi.aliyuncs.com',
+    endpoint: 'dypnsapi.aliyuncs.com',
   });
 }
 
 /**
- * Send SMS verification code
+ * Send SMS verification code via PNV service.
+ * Alibaba Cloud handles code generation + SMS sending.
  * @param {string} phone - Phone number (e.g. 13800138000)
- * @param {string} code - 6-digit verification code
- * @param {string} signName - SMS signature name (must be approved in Alibaba Cloud)
- * @param {string} templateCode - SMS template code (must be approved)
+ * @returns {{ bizToken: string, message: string }}
  */
-async function sendSms(phone, code) {
-  const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name') || '得物运营';
-  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_XXXXXXXXX';
-
+async function sendSmsCode(phone) {
+  const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
   const client = createClient();
 
-  const result = await client.sendSms({
-    phoneNumbers: phone,
-    signName,
-    templateCode,
-    templateParam: JSON.stringify({ code }),
+  const result = await client.sendSmsVerifyCode({
+    phoneNumber: phone,
+    signName: signName || undefined,
+    // PNV uses built-in SMS templates — no template code needed
   });
 
   if (result.body.code !== 'OK') {
-    throw new Error(`短信发送失败: ${result.body.message} (${result.body.code})`);
+    throw new Error(`验证码发送失败: ${result.body.message} (${result.body.code})`);
   }
 
-  return { success: true, bizId: result.body.bizId };
+  return { bizToken: result.body.bizToken, message: '验证码已发送' };
 }
 
-module.exports = { sendSms };
+/**
+ * Check SMS verification code via PNV service.
+ * @param {string} phone - Phone number
+ * @param {string} code - User-entered 6-digit code
+ * @param {string} bizToken - Token from sendSmsCode response
+ * @returns {boolean} - true if valid
+ */
+async function checkSmsCode(phone, code, bizToken) {
+  const client = createClient();
+
+  const result = await client.checkSmsVerifyCode({
+    phoneNumber: phone,
+    verifyCode: code,
+    bizToken: bizToken,
+  });
+
+  if (result.body.code !== 'OK') {
+    if (result.body.code === 'INVALID_VERIFY_CODE') {
+      return false;
+    }
+    throw new Error(`验证码校验失败: ${result.body.message} (${result.body.code})`);
+  }
+
+  return true;
+}
+
+module.exports = { sendSmsCode, checkSmsCode };
