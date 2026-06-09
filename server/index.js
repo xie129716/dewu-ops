@@ -23,6 +23,17 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Debug (no auth required)
+app.get('/api/debug/ip', async (req, res) => {
+  try {
+    const r = await fetch('https://api.ipify.org');
+    const ip = await r.text();
+    res.json({ ip: ip.trim() });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -35,17 +46,6 @@ app.use('/api/history', historyRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Debug: get server's outbound IP
-app.get('/api/debug/ip', async (req, res) => {
-  try {
-    const r = await fetch('https://api.ipify.org');
-    const ip = await r.text();
-    res.json({ ip: ip.trim() });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
 });
 
 // --- Production: serve built frontend ---
