@@ -10,6 +10,7 @@ function getDB() {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     initTables();
+    migrate();
   }
   return db;
 }
@@ -32,6 +33,14 @@ function initTables() {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
+}
+
+// Migrate: add job_id column if missing (for older databases)
+function migrate() {
+  const cols = db.prepare("PRAGMA table_info(history)").all().map(c => c.name);
+  if (!cols.includes('job_id')) {
+    db.exec("ALTER TABLE history ADD COLUMN job_id TEXT");
+  }
 }
 
 // ---- Settings CRUD ----
@@ -59,15 +68,16 @@ function getAllSettings() {
 function createHistory(record) {
   const d = getDB();
   const stmt = d.prepare(`
-    INSERT INTO history (original_image, recognition_result, copy_result, generated_images, status)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO history (original_image, recognition_result, copy_result, generated_images, status, job_id)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     record.original_image || null,
     record.recognition_result ? JSON.stringify(record.recognition_result) : null,
     record.copy_result ? JSON.stringify(record.copy_result) : null,
     record.generated_images ? JSON.stringify(record.generated_images) : null,
-    record.status || 'completed'
+    record.status || 'completed',
+    record.job_id || null
   );
   return { id: result.lastInsertRowid, ...record };
 }
@@ -99,11 +109,26 @@ function deleteHistory(id) {
   d.prepare('DELETE FROM history WHERE id = ?').run(id);
 }
 
-function updateHistoryStatus(id, status, generatedImages) {
+function updateHistoryStatus(id, status, generatedImages, jobId) {
   const d = getDB();
-  d.prepare(
-    'UPDATE history SET status = ?, generated_images = ? WHERE id = ?'
-  ).run(status, JSON.stringify(generatedImages), id);
+  const params = [status, generatedImages ? JSON.stringify(generatedImages) : null];
+  let sql = 'UPDATE history SET status = ?, generated_images = ?';
+  if (jobId) {
+    sql += ', job_id = ?';
+    params.push(jobId);
+  }
+  sql += ' WHERE id = ?';
+  params.push(id);
+  d.prepare(sql).run(...params);
+}
+
+// Get all history records that are still pending (image generation not completed)
+function getPendingHistory() {
+  const d = getDB();
+  const rows = d.prepare(
+    "SELECT * FROM history WHERE status = 'pending_image' AND job_id IS NOT NULL"
+  ).all();
+  return rows.map(parseHistoryRow);
 }
 
 function parseHistoryRow(row) {
@@ -114,6 +139,7 @@ function parseHistoryRow(row) {
     copy_result: row.copy_result ? JSON.parse(row.copy_result) : null,
     generated_images: row.generated_images ? JSON.parse(row.generated_images) : null,
     status: row.status,
+    job_id: row.job_id || null,
     created_at: row.created_at,
   };
 }
@@ -128,4 +154,5 @@ module.exports = {
   getHistoryById,
   deleteHistory,
   updateHistoryStatus,
+  getPendingHistory,
 };

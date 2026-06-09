@@ -52,13 +52,14 @@ router.post('/run', async (req, res) => {
     results.imageJob = imageJob;
     console.log('[Workflow] Image job submitted:', imageJob.jobId);
 
-    // Save to history
+    // Save to history (include job_id for later sync)
     const historyRecord = createHistory({
       original_image: imageUrl,
       recognition_result: recognition,
       copy_result: copy,
       generated_images: null,
       status: 'pending_image',
+      job_id: imageJob.jobId,
     });
     results.historyId = historyRecord.id;
 

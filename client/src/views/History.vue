@@ -80,6 +80,8 @@ async function loadPage(p) {
   page.value = p;
   loading.value = true;
   try {
+    // Sync pending records first
+    await syncPending();
     const data = await api.get('/history', { params: { page: p, pageSize: 10 } });
     records.value = data.list;
     totalPages.value = Math.ceil(data.total / data.pageSize);
@@ -87,6 +89,18 @@ async function loadPage(p) {
     console.error('Failed to load history:', e);
   } finally {
     loading.value = false;
+  }
+}
+
+async function syncPending() {
+  try {
+    const result = await api.post('/history/sync');
+    if (result.synced > 0) {
+      console.log(`Synced ${result.synced} pending records`);
+    }
+  } catch (e) {
+    // Silently fail — sync is best-effort
+    console.error('Sync failed:', e);
   }
 }
 

@@ -135,6 +135,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
           await api.patch(`/history/${historyId.value}`, {
             status: 'completed',
             generatedImages: data.resultUrls,
+            jobId: imageJob.value?.jobId,
           });
         }
         return data;
