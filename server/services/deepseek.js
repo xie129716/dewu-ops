@@ -4,8 +4,8 @@ const { getSetting } = require('./storage');
 /**
  * Create a DeepSeek API client
  */
-function createClient() {
-  const apiKey = getSetting('deepseek_api_key');
+function createClient(userId) {
+  const apiKey = getSetting(userId, 'deepseek_api_key');
   if (!apiKey) {
     throw new Error('DeepSeek API Key 未配置，请先在设置页面配置');
   }
@@ -21,8 +21,8 @@ function createClient() {
  * @param {object} options - { style, keywords }
  * @returns {object} - { title, content, tags, hashtags }
  */
-async function generateCopy(productInfo, options = {}) {
-  const client = createClient();
+async function generateCopy(productInfo, options = {}, userId) {
+  const client = createClient(userId);
   const { brand, productName, category } = productInfo;
   const { style = '潮流种草', keywords = '' } = options;
 

@@ -4,8 +4,8 @@ const { getSetting } = require('./storage');
 
 const BASE_URL = 'https://img-cn.65535.space';
 
-function getApiKey() {
-  const apiKey = getSetting('img65535_api_key');
+function getApiKey(userId) {
+  const apiKey = getSetting(userId, 'img65535_api_key');
   if (!apiKey) {
     throw new Error('65535 图片平台 API Key 未配置，请先在设置页面配置');
   }
@@ -16,8 +16,8 @@ function getApiKey() {
  * Submit a text-to-image generation task (no reference image)
  * POST /v1/images/generations (JSON)
  */
-async function submitImageTask({ prompt, size = '2048x2048' }) {
-  const apiKey = getApiKey();
+async function submitImageTask({ prompt, size = '2048x2048' }, userId) {
+  const apiKey = getApiKey(userId);
 
   const body = { model: 'gpt-image-2', prompt, size, n: 1 };
 
@@ -53,8 +53,8 @@ async function submitImageTask({ prompt, size = '2048x2048' }) {
  * @param {string} params.prompt - Edit/generation prompt
  * @param {string} params.size - Output image size
  */
-async function submitImageEdit({ imagePath, prompt, size = '2048x2048' }) {
-  const apiKey = getApiKey();
+async function submitImageEdit({ imagePath, prompt, size = '2048x2048' }, userId) {
+  const apiKey = getApiKey(userId);
 
   // Read image file into buffer
   const imageBuffer = fs.readFileSync(imagePath);
@@ -96,8 +96,8 @@ async function submitImageEdit({ imagePath, prompt, size = '2048x2048' }) {
  * Poll for async task status (works for both generations and edits)
  * GET /v1/images/async-generations/{jobId}
  */
-async function getTaskStatus(jobId) {
-  const apiKey = getApiKey();
+async function getTaskStatus(jobId, userId) {
+  const apiKey = getApiKey(userId);
 
   const response = await fetch(`${BASE_URL}/v1/images/async-generations/${jobId}`, {
     method: 'GET',

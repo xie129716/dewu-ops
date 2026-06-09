@@ -1,15 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { saveSetting, getSetting, getAllSettings } = require('../services/storage');
+const authMiddleware = require('../middleware/auth');
+const { saveSetting, getSetting } = require('../services/storage');
+
+// All settings routes require auth
+router.use(authMiddleware);
 
 // Save API keys
 router.post('/apikeys', (req, res) => {
   try {
     const { bailian_api_key, deepseek_api_key, img65535_api_key } = req.body;
+    const uid = req.user.id;
 
-    if (bailian_api_key !== undefined) saveSetting('bailian_api_key', bailian_api_key);
-    if (deepseek_api_key !== undefined) saveSetting('deepseek_api_key', deepseek_api_key);
-    if (img65535_api_key !== undefined) saveSetting('img65535_api_key', img65535_api_key);
+    if (bailian_api_key !== undefined) saveSetting(uid, 'bailian_api_key', bailian_api_key);
+    if (deepseek_api_key !== undefined) saveSetting(uid, 'deepseek_api_key', deepseek_api_key);
+    if (img65535_api_key !== undefined) saveSetting(uid, 'img65535_api_key', img65535_api_key);
 
     res.json({ success: true, message: 'API Keys 保存成功' });
   } catch (err) {
@@ -20,12 +25,12 @@ router.post('/apikeys', (req, res) => {
 // Get API keys (masked)
 router.get('/apikeys', (req, res) => {
   try {
-    const keys = {
-      bailian_api_key: maskKey(getSetting('bailian_api_key')),
-      deepseek_api_key: maskKey(getSetting('deepseek_api_key')),
-      img65535_api_key: maskKey(getSetting('img65535_api_key')),
-    };
-    res.json(keys);
+    const uid = req.user.id;
+    res.json({
+      bailian_api_key: maskKey(getSetting(uid, 'bailian_api_key')),
+      deepseek_api_key: maskKey(getSetting(uid, 'deepseek_api_key')),
+      img65535_api_key: maskKey(getSetting(uid, 'img65535_api_key')),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -34,10 +39,11 @@ router.get('/apikeys', (req, res) => {
 // Check API key status
 router.get('/status', (req, res) => {
   try {
+    const uid = req.user.id;
     res.json({
-      bailian: !!getSetting('bailian_api_key'),
-      deepseek: !!getSetting('deepseek_api_key'),
-      img65535: !!getSetting('img65535_api_key'),
+      bailian: !!getSetting(uid, 'bailian_api_key'),
+      deepseek: !!getSetting(uid, 'deepseek_api_key'),
+      img65535: !!getSetting(uid, 'img65535_api_key'),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

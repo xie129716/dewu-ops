@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 
 // Import routes
+const authRoutes = require('./routes/auth');
 const settingsRoutes = require('./routes/settings');
 const recognizeRoutes = require('./routes/recognize');
 const copyRoutes = require('./routes/copy');
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api', recognizeRoutes);
 app.use('/api/copy', copyRoutes);

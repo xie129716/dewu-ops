@@ -1,59 +1,48 @@
 const express = require('express');
 const path = require('path');
 const router = express.Router();
+const authMiddleware = require('../middleware/auth');
 const { recognizeProduct } = require('../services/bailian');
 const { generateCopy } = require('../services/deepseek');
 const { submitImageEdit } = require('../services/img65535');
 const { createHistory } = require('../services/storage');
 
-/**
- * Full pipeline: recognize → copy → generate image
- * Runs sequentially, returns intermediate results
- */
+router.use(authMiddleware);
+
 router.post('/run', async (req, res) => {
   try {
     const { imageUrl, copyStyle, imageSize } = req.body;
+    if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
 
-    if (!imageUrl) {
-      return res.status(400).json({ error: '缺少 imageUrl 参数' });
-    }
-
-    // Convert relative URL to absolute local file path for base64 encoding
+    const uid = req.user.id;
     const localPath = path.join(__dirname, '..', imageUrl);
     const results = {};
 
-    // Step 1: Recognize product (passes local path, service converts to base64)
-    console.log('[Workflow] Step 1: Recognizing product...');
-    const recognition = await recognizeProduct(localPath);
+    // Step 1: Recognize
+    console.log('[Workflow] Step 1: Recognizing...');
+    const recognition = await recognizeProduct(localPath, uid);
     results.recognition = recognition;
-    console.log('[Workflow] Recognition result:', recognition.productName);
 
     // Step 2: Generate copy
     console.log('[Workflow] Step 2: Generating copy...');
     const copy = await generateCopy(
-      {
-        brand: recognition.brand,
-        productName: recognition.productName,
-        category: recognition.category,
-      },
-      { style: copyStyle }
+      { brand: recognition.brand, productName: recognition.productName, category: recognition.category },
+      { style: copyStyle },
+      uid
     );
     results.copy = copy;
-    console.log('[Workflow] Copy generated:', copy.title);
 
-    // Step 3: Generate image using reference image (image-to-image / edits)
-    console.log('[Workflow] Step 3: Submitting image-to-image generation task...');
-    const imagePrompt = buildImagePrompt(recognition, copy);
+    // Step 3: Generate image
+    console.log('[Workflow] Step 3: Submitting image-to-image...');
     const imageJob = await submitImageEdit({
       imagePath: localPath,
-      prompt: imagePrompt,
+      prompt: buildImagePrompt(recognition, copy),
       size: imageSize || '2048x2048',
-    });
+    }, uid);
     results.imageJob = imageJob;
-    console.log('[Workflow] Image job submitted:', imageJob.jobId);
 
-    // Save to history (include job_id for later sync)
-    const historyRecord = createHistory({
+    // Save to history
+    const historyRecord = createHistory(uid, {
       original_image: imageUrl,
       recognition_result: recognition,
       copy_result: copy,

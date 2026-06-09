@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <nav class="app-nav">
+    <nav v-if="auth.isLoggedIn" class="app-nav">
       <div class="nav-brand">
         <span class="brand-icon">👟</span>
         <span class="brand-text">得物运营系统</span>
@@ -16,14 +16,28 @@
           <span class="nav-icon">⚙️</span> 设置
         </router-link>
       </div>
+      <div class="nav-user">
+        <span class="user-greeting">👤 {{ auth.user?.username }}</span>
+        <button class="btn btn-ghost btn-sm" @click="handleLogout">退出</button>
+      </div>
     </nav>
-    <main class="app-main">
+    <main class="app-main" :class="{ 'no-nav': !auth.isLoggedIn }">
       <router-view />
     </main>
   </div>
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+
+const auth = useAuthStore();
+const router = useRouter();
+
+function handleLogout() {
+  auth.logout();
+  router.push('/login');
+}
 </script>
 
 <style scoped>
@@ -40,27 +54,11 @@
   z-index: 100;
 }
 
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon { font-size: 28px; }
+.brand-text { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 1px; }
 
-.brand-icon {
-  font-size: 28px;
-}
-
-.brand-text {
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 1px;
-}
-
-.nav-links {
-  display: flex;
-  gap: 8px;
-}
+.nav-links { display: flex; gap: 8px; }
 
 .nav-link {
   display: flex;
@@ -73,23 +71,18 @@
   font-size: 14px;
   transition: all 0.2s;
 }
+.nav-link:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.nav-link.router-link-active { color: #fff; background: rgba(255,255,255,0.12); }
+.nav-icon { font-size: 16px; }
 
-.nav-link:hover {
-  color: #fff;
-  background: rgba(255,255,255,0.08);
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.nav-link.router-link-active {
-  color: #fff;
-  background: rgba(255,255,255,0.12);
-}
+.user-greeting { color: #ccc; font-size: 14px; }
 
-.nav-icon {
-  font-size: 16px;
-}
-
-.app-main {
-  min-height: calc(100vh - 60px);
-  background: #0f0f0f;
-}
+.app-main { min-height: calc(100vh - 60px); background: #0f0f0f; }
+.app-main.no-nav { min-height: 100vh; }
 </style>

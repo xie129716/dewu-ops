@@ -9,12 +9,19 @@ const api = axios.create({
   timeout: 300000, // 5 minutes for long operations
 });
 
-// Request interceptor
+// Response interceptor
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const message = error.response?.data?.error || error.message || '请求失败';
     console.error('[API Error]', message);
+
+    // Auto-redirect to login on 401 (except for auth endpoints)
+    if (error.response?.status === 401 && !error.config.url.includes('/auth/')) {
+      localStorage.removeItem('dewu_token');
+      window.location.href = '/login';
+    }
+
     return Promise.reject(new Error(message));
   }
 );

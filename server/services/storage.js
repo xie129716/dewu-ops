@@ -17,61 +17,89 @@ function getDB() {
 
 function initTables() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
       value TEXT NOT NULL,
-      updated_at TEXT DEFAULT (datetime('now'))
+      updated_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, key)
     );
 
     CREATE TABLE IF NOT EXISTS history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
       original_image TEXT,
       recognition_result TEXT,
       copy_result TEXT,
       generated_images TEXT,
       status TEXT DEFAULT 'completed',
+      job_id TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
 }
 
-// Migrate: add job_id column if missing (for older databases)
 function migrate() {
-  const cols = db.prepare("PRAGMA table_info(history)").all().map(c => c.name);
-  if (!cols.includes('job_id')) {
+  // Add user_id to history if missing (pre-auth databases)
+  const histCols = db.prepare("PRAGMA table_info(history)").all().map(c => c.name);
+  if (!histCols.includes('user_id')) {
+    db.exec("ALTER TABLE history ADD COLUMN user_id INTEGER DEFAULT 0");
+  }
+  if (!histCols.includes('job_id')) {
     db.exec("ALTER TABLE history ADD COLUMN job_id TEXT");
+  }
+
+  // Migrate settings: if old format (no user_id), recreate
+  const setCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
+  if (!setCols.includes('user_id')) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS settings_new (
+        user_id INTEGER NOT NULL DEFAULT 0,
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, key)
+      );
+      INSERT OR IGNORE INTO settings_new (key, value, updated_at)
+        SELECT key, value, updated_at FROM settings;
+      DROP TABLE settings;
+      ALTER TABLE settings_new RENAME TO settings;
+    `);
   }
 }
 
 // ---- Settings CRUD ----
-function saveSetting(key, value) {
+function saveSetting(userId, key, value) {
   const d = getDB();
   d.prepare(`
-    INSERT INTO settings (key, value, updated_at)
-    VALUES (?, ?, datetime('now'))
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
-  `).run(key, value);
+    INSERT INTO settings (user_id, key, value, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+  `).run(userId, key, value);
 }
 
-function getSetting(key) {
+function getSetting(userId, key) {
   const d = getDB();
-  const row = d.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  const row = d.prepare('SELECT value FROM settings WHERE user_id = ? AND key = ?').get(userId, key);
   return row ? row.value : null;
 }
 
-function getAllSettings() {
-  const d = getDB();
-  return d.prepare('SELECT key, value, updated_at FROM settings').all();
-}
-
 // ---- History CRUD ----
-function createHistory(record) {
+function createHistory(userId, record) {
   const d = getDB();
   const stmt = d.prepare(`
-    INSERT INTO history (original_image, recognition_result, copy_result, generated_images, status, job_id)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO history (user_id, original_image, recognition_result, copy_result, generated_images, status, job_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
+    userId,
     record.original_image || null,
     record.recognition_result ? JSON.stringify(record.recognition_result) : null,
     record.copy_result ? JSON.stringify(record.copy_result) : null,
@@ -82,34 +110,29 @@ function createHistory(record) {
   return { id: result.lastInsertRowid, ...record };
 }
 
-function getHistoryList(page = 1, pageSize = 20) {
+function getHistoryList(userId, page = 1, pageSize = 20) {
   const d = getDB();
   const offset = (page - 1) * pageSize;
-  const total = d.prepare('SELECT COUNT(*) as count FROM history').get().count;
+  const total = d.prepare('SELECT COUNT(*) as count FROM history WHERE user_id = ?').get(userId).count;
   const rows = d.prepare(
-    'SELECT * FROM history ORDER BY created_at DESC LIMIT ? OFFSET ?'
-  ).all(pageSize, offset);
+    'SELECT * FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).all(userId, pageSize, offset);
 
-  return {
-    total,
-    page,
-    pageSize,
-    list: rows.map(parseHistoryRow),
-  };
+  return { total, page, pageSize, list: rows.map(parseHistoryRow) };
 }
 
-function getHistoryById(id) {
+function getHistoryById(userId, id) {
   const d = getDB();
-  const row = d.prepare('SELECT * FROM history WHERE id = ?').get(id);
+  const row = d.prepare('SELECT * FROM history WHERE id = ? AND user_id = ?').get(id, userId);
   return row ? parseHistoryRow(row) : null;
 }
 
-function deleteHistory(id) {
+function deleteHistory(userId, id) {
   const d = getDB();
-  d.prepare('DELETE FROM history WHERE id = ?').run(id);
+  d.prepare('DELETE FROM history WHERE id = ? AND user_id = ?').run(id, userId);
 }
 
-function updateHistoryStatus(id, status, generatedImages, jobId) {
+function updateHistoryStatus(userId, id, status, generatedImages, jobId) {
   const d = getDB();
   const params = [status, generatedImages ? JSON.stringify(generatedImages) : null];
   let sql = 'UPDATE history SET status = ?, generated_images = ?';
@@ -117,12 +140,11 @@ function updateHistoryStatus(id, status, generatedImages, jobId) {
     sql += ', job_id = ?';
     params.push(jobId);
   }
-  sql += ' WHERE id = ?';
-  params.push(id);
+  sql += ' WHERE id = ? AND user_id = ?';
+  params.push(id, userId);
   d.prepare(sql).run(...params);
 }
 
-// Get all history records that are still pending (image generation not completed)
 function getPendingHistory() {
   const d = getDB();
   const rows = d.prepare(
@@ -134,6 +156,7 @@ function getPendingHistory() {
 function parseHistoryRow(row) {
   return {
     id: row.id,
+    user_id: row.user_id,
     original_image: row.original_image,
     recognition_result: row.recognition_result ? JSON.parse(row.recognition_result) : null,
     copy_result: row.copy_result ? JSON.parse(row.copy_result) : null,
@@ -148,7 +171,6 @@ module.exports = {
   getDB,
   saveSetting,
   getSetting,
-  getAllSettings,
   createHistory,
   getHistoryList,
   getHistoryById,

@@ -7,8 +7,8 @@ const { getSetting } = require('./storage');
  * Create a Bailian (Alibaba Cloud) API client
  * Uses OpenAI-compatible interface with qwen-vl-max for vision tasks
  */
-function createClient() {
-  const apiKey = getSetting('bailian_api_key');
+function createClient(userId) {
+  const apiKey = getSetting(userId, 'bailian_api_key');
   if (!apiKey) {
     throw new Error('百炼 API Key 未配置，请先在设置页面配置');
   }
@@ -36,8 +36,8 @@ function imageToBase64(filePath) {
  * @param {string} imagePath - Local file path to the image, or base64 data URL
  * @returns {object} - { brand, productName, category, description, rawResponse }
  */
-async function recognizeProduct(imagePath) {
-  const client = createClient();
+async function recognizeProduct(imagePath, userId) {
+  const client = createClient(userId);
 
   const systemPrompt = `你是一个专业的潮流商品识别专家。请仔细分析图片中的商品，识别出商品的品牌、具体型号/款式、品类等信息。
 
