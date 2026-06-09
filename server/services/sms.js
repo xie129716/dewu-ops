@@ -6,7 +6,6 @@ const SMS_URL = process.env.SMS_API_URL || 'https://push.spug.cc/sms/A27Lsf3fs2b
 
 async function sendSms(phone, code) {
   const body = {
-    name: '得物运营',
     code: code,
     to: phone,
   };
