@@ -2,7 +2,7 @@ const POPClient = require('@alicloud/pop-core');
 const { getSetting } = require('./storage');
 
 // 阿里云号码认证 — 系统赠送签名和模板（免资质，必须配套使用）
-const SIGN_NAME = '速通互联验证码';
+const SIGN_NAME = '云渚科技验证平台';
 const TEMPLATE_CODE = '100001';
 
 function createClient() {
