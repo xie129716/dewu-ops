@@ -23,11 +23,14 @@ function createClient() {
  */
 async function sendSmsCode(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
+  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code');
   const client = createClient();
 
   const req = new SendSmsVerifyCodeRequest({
     phoneNumber: phone,
     signName: signName || undefined,
+    templateCode: templateCode || undefined,
+    templateParam: JSON.stringify({ code: '' }),
   });
 
   const result = await client.sendSmsVerifyCode(req);
