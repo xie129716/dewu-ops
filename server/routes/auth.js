@@ -5,7 +5,7 @@ const {
   createUser, createUserByPhone,
   getUserByUsername, getUserByPhone, getUserById,
 } = require('../services/auth');
-const { sendSms } = require('../services/sms');
+const { sendSms, checkSmsCode } = require('../services/sms');
 const authMiddleware = require('../middleware/auth');
 
 // In-memory code store: phone -> { code, expiresAt }
@@ -18,22 +18,25 @@ router.post('/send-code', async (req, res) => {
     if (!phone) return res.status(400).json({ error: '手机号不能为空' });
     if (!/^1[3-9]\d{9}$/.test(phone)) return res.status(400).json({ error: '手机号格式不正确' });
 
-    // Generate 6-digit code
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    codeStore.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
-
     // Clean expired
     for (const [k, v] of codeStore) {
       if (v.expiresAt < Date.now()) codeStore.delete(k);
     }
 
-    // Try real SMS, fall back to dev mode on any error
     try {
-      await sendSms(phone, code);
+      // PNV generates code via ##code## placeholder
+      const result = await sendSms(phone);
+      // Store the generated code for dev fallback
+      codeStore.set(phone, { code: result.verifyCode, expiresAt: Date.now() + 5 * 60 * 1000 });
       return res.json({ success: true, message: '验证码已发送' });
     } catch (smsErr) {
-      console.error('SMS send failed, falling back to dev mode:', smsErr.message);
-      return res.json({ success: true, message: '验证码已生成（开发模式）', devCode: code });
+      console.error('SMS send failed, fallback to dev:', smsErr.message);
+      if (smsErr.message.includes('未配置')) {
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        codeStore.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
+        return res.json({ success: true, message: '验证码已生成（开发模式）', devCode: code });
+      }
+      return res.status(500).json({ error: `短信发送失败: ${smsErr.message}` });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -50,9 +53,20 @@ router.post('/register', async (req, res) => {
       if (!password || password.length < 6) return res.status(400).json({ error: '密码长度至少 6 位' });
       if (!/^1[3-9]\d{9}$/.test(phone)) return res.status(400).json({ error: '手机号格式不正确' });
 
-      const stored = codeStore.get(phone);
-      if (!stored || stored.code !== code || stored.expiresAt < Date.now()) {
-        return res.status(400).json({ error: '验证码错误或已过期' });
+      // Try PNV verification first
+      let verified = false;
+      try {
+        verified = await checkSmsCode(phone, code);
+      } catch (e) {
+        // PNV not available, fall back to in-memory
+        console.log('PNV check failed, trying dev mode:', e.message);
+      }
+      if (!verified) {
+        // Dev mode fallback: compare with stored code
+        const stored = codeStore.get(phone);
+        if (!stored || stored.code !== code || stored.expiresAt < Date.now()) {
+          return res.status(400).json({ error: '验证码错误或已过期' });
+        }
       }
       codeStore.delete(phone);
 
