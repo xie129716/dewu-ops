@@ -4,7 +4,7 @@ const { Config } = require('@alicloud/openapi-client');
 const { RuntimeOptions } = require('@alicloud/tea-util');
 const { getSetting } = require('./storage');
 
-const SIGN_NAME = '云渚科技验证平台';
+const SIGN_NAME = '速通互联验证码';
 const TEMPLATE_CODE = '100001';
 
 function createClient() {
@@ -37,7 +37,9 @@ async function sendSms(phone, code) {
   const result = await client.sendSmsVerifyCodeWithOptions(req, runtime);
 
   if (result.body.code !== 'OK') {
-    throw new Error(`${result.body.message}`);
+    const detail = JSON.stringify(result.body);
+    console.error('PNV Error:', detail);
+    throw new Error(`${result.body.message} | ${detail}`);
   }
 
   return { bizId: result.body.model?.bizId || '' };
