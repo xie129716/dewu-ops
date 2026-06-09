@@ -26,7 +26,7 @@ async function sendSms(phone, code) {
     PhoneNumber: phone,
     SignName: signName,
     TemplateCode: templateCode,
-    TemplateParam: JSON.stringify({ code }),
+    TemplateParam: JSON.stringify({ code, min: '4', max: '6' }),
   });
 
   if (result.Code !== 'OK') {
