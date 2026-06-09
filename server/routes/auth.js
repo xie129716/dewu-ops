@@ -30,15 +30,15 @@ router.post('/send-code', async (req, res) => {
     // Save to DB
     saveSmsCode(phone, code, expiresAt);
 
-    // Send real SMS (falls through silently in dev mode)
+    // Try to send real SMS; fall back to dev mode if not configured
     try {
       await sendSms(phone, code);
       console.log(`SMS sent to ${phone}`);
     } catch (smsErr) {
       console.error('SMS send failed:', smsErr.message);
-      // In development, still return the code so the user can test
-      if (process.env.NODE_ENV !== 'production') {
-        return res.json({ success: true, message: '验证码已发送（开发模式）', devCode: code });
+      // If credentials not configured, return code for testing
+      if (smsErr.message.includes('未配置')) {
+        return res.json({ success: true, message: '验证码已生成（短信服务未配置，请使用下方验证码）', devCode: code });
       }
       return res.status(500).json({ error: '短信发送失败，请稍后再试' });
     }
