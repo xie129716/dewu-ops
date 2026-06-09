@@ -1,9 +1,9 @@
 const POPClient = require('@alicloud/pop-core');
 const { getSetting } = require('./storage');
 
-// System-provided signature and template (免资质，赠送签名+模板)
-const SIGN_NAME = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name') || '速通互联验证码';
-const TEMPLATE_CODE = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || '100001';
+// 阿里云号码认证 — 系统赠送签名和模板（免资质，必须配套使用）
+const SIGN_NAME = '速通互联验证码';
+const TEMPLATE_CODE = '100001';
 
 function createClient() {
   const accessKeyId = process.env.ALIBABA_ACCESS_KEY_ID || getSetting(0, 'sms_access_key_id');
