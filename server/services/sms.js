@@ -1,5 +1,5 @@
-const DypnsapiClient = require('@alicloud/dypnsapi20170525').default;
-const { SendSmsVerifyCodeRequest, CheckSmsVerifyCodeRequest } = require('@alicloud/dypnsapi20170525');
+const DysmsapiClient = require('@alicloud/dysmsapi20170525').default;
+const { SendSmsRequest } = require('@alicloud/dysmsapi20170525');
 const { Config } = require('@alicloud/openapi-client');
 const { getSetting } = require('./storage');
 
@@ -8,61 +8,39 @@ function createClient() {
   const accessKeySecret = process.env.ALIBABA_ACCESS_KEY_SECRET || getSetting(0, 'sms_access_key_secret');
 
   if (!accessKeyId || !accessKeySecret) {
-    throw new Error('短信服务未配置：请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET');
+    throw new Error('短信服务未配置');
   }
 
-  return new DypnsapiClient(new Config({
+  return new DysmsapiClient(new Config({
     accessKeyId,
     accessKeySecret,
-    endpoint: 'dypnsapi.aliyuncs.com',
+    endpoint: 'dysmsapi.aliyuncs.com',
   }));
 }
 
 /**
- * Send SMS verification code via PNV.
+ * Send SMS verification code via 短信服务 (Dysmsapi).
+ * Returns the generated code for later verification.
  */
-async function sendSmsCode(phone) {
+async function sendSms(phone, code) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
-  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code');
+  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_335015865';
   const client = createClient();
 
-  const req = new SendSmsVerifyCodeRequest({
-    phoneNumber: phone,
+  const req = new SendSmsRequest({
+    phoneNumbers: phone,
     signName: signName || undefined,
-    templateCode: templateCode || undefined,
+    templateCode: templateCode,
+    templateParam: JSON.stringify({ code }),
   });
 
-  const result = await client.sendSmsVerifyCode(req);
+  const result = await client.sendSms(req);
 
   if (result.body.code !== 'OK') {
-    throw new Error(`验证码发送失败: ${result.body.message} (${result.body.code})`);
+    throw new Error(`${result.body.message} (${result.body.code})`);
   }
 
-  return { bizToken: result.body.bizToken, message: '验证码已发送' };
+  return { bizId: result.body.bizId };
 }
 
-/**
- * Check SMS verification code via PNV.
- */
-async function checkSmsCode(phone, code, bizToken) {
-  const client = createClient();
-
-  const req = new CheckSmsVerifyCodeRequest({
-    phoneNumber: phone,
-    verifyCode: code,
-    bizToken: bizToken,
-  });
-
-  const result = await client.checkSmsVerifyCode(req);
-
-  if (result.body.code !== 'OK') {
-    if (result.body.code === 'INVALID_VERIFY_CODE') {
-      return false;
-    }
-    throw new Error(`验证码校验失败: ${result.body.message} (${result.body.code})`);
-  }
-
-  return true;
-}
-
-module.exports = { sendSmsCode, checkSmsCode };
+module.exports = { sendSms };

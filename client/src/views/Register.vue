@@ -87,7 +87,6 @@ const auth = useAuthStore();
 const phone = ref('');
 const code = ref('');
 const password = ref('');
-const bizToken = ref('');
 const error = ref('');
 const devCode = ref('');
 const loading = ref(false);
@@ -105,7 +104,6 @@ async function handleSendCode() {
   }
   try {
     const data = await api.post('/auth/send-code', { phone: phone.value });
-    bizToken.value = data.bizToken;
     if (data.devCode) {
       devCode.value = data.devCode;
     }
@@ -133,17 +131,13 @@ async function handleRegister() {
     error.value = '请输入6位短信验证码';
     return;
   }
-  if (!bizToken.value) {
-    error.value = '请先获取验证码';
-    return;
-  }
   if (!password.value || password.value.length < 6) {
     error.value = '密码长度至少6位';
     return;
   }
   loading.value = true;
   try {
-    await auth.register(phone.value, code.value, password.value, bizToken.value);
+    await auth.register(phone.value, code.value, password.value);
     router.push('/');
   } catch (e) {
     error.value = e.message;

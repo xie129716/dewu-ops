@@ -27,12 +27,12 @@ export const useAuthStore = defineStore('auth', () => {
     return data;
   }
 
-  async function register(usernameOrPhone, codeOrPassword, maybePassword, bizToken) {
-    // Phone-based: (phone, code, password, bizToken)
+  async function register(usernameOrPhone, codeOrPassword, maybePassword) {
+    // Phone-based: (phone, code, password)
     // Username-based: (username, password)
     let payload;
-    if (bizToken || maybePassword) {
-      payload = { phone: usernameOrPhone, code: codeOrPassword, password: maybePassword, bizToken };
+    if (maybePassword) {
+      payload = { phone: usernameOrPhone, code: codeOrPassword, password: maybePassword };
     } else {
       payload = { username: usernameOrPhone, password: codeOrPassword };
     }
