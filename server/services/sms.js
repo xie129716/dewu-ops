@@ -1,43 +1,30 @@
-const POPClient = require('@alicloud/pop-core');
-const { getSetting } = require('./storage');
-
-function createClient() {
-  const accessKeyId = process.env.ALIBABA_ACCESS_KEY_ID || getSetting(0, 'sms_access_key_id');
-  const accessKeySecret = process.env.ALIBABA_ACCESS_KEY_SECRET || getSetting(0, 'sms_access_key_secret');
-
-  if (!accessKeyId || !accessKeySecret) {
-    throw new Error('短信服务未配置');
-  }
-
-  // Use PNV endpoint
-  return new POPClient({
-    accessKeyId,
-    accessKeySecret,
-    endpoint: 'https://dypnsapi.aliyuncs.com',
-    apiVersion: '2017-05-25',
-  });
-}
+/**
+ * Push.spug.cc SMS service
+ * Simple HTTP API — no SDK needed
+ */
+const SMS_URL = process.env.SMS_API_URL || 'https://push.spug.cc/sms/A27Lsf3fs2bgEY';
 
 async function sendSms(phone, code) {
-  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_335015865';
-  const client = createClient();
-
-  // PNV SendSmsVerifyCode
-  const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
-  const params = {
-    PhoneNumber: phone,
-    SignName: signName,
-    TemplateCode: templateCode,
-    TemplateParam: JSON.stringify({ code, min: '6' }),
+  const body = {
+    name: '得物运营',
+    code: code,
+    to: phone,
   };
 
-  const result = await client.request('SendSmsVerifyCode', params);
+  const res = await fetch(SMS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
-  if (result.Code !== 'OK') {
-    throw new Error(`${result.Message}`);
+  const data = await res.json();
+
+  if (data.code !== 200) {
+    throw new Error(data.msg || '短信发送失败');
   }
 
-  return { requestId: result.RequestId };
+  console.log(`SMS sent to ${phone}, request_id: ${data.request_id}`);
+  return { requestId: data.request_id };
 }
 
 module.exports = { sendSms };
