@@ -23,17 +23,6 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Debug (no auth required)
-app.get('/api/debug/ip', async (req, res) => {
-  try {
-    const r = await fetch('https://api.ipify.org');
-    const ip = await r.text();
-    res.json({ ip: ip.trim() });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
-});
-
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
