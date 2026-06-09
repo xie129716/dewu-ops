@@ -45,7 +45,7 @@ router.post('/send-code', async (req, res) => {
           devCode: code,
         });
       }
-      return res.status(500).json({ error: '短信发送失败，请稍后再试' });
+      return res.status(500).json({ error: `短信发送失败: ${smsErr.message}` });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
