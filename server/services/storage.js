@@ -191,16 +191,14 @@ function saveSmsCode(phone, code, expiresAt) {
 
 function verifySmsCode(phone, code) {
   const d = getDB();
-  // Mark old codes as used for this phone
-  d.prepare("UPDATE sms_codes SET used = 1 WHERE phone = ? AND used = 0").run(phone);
-
+  // First check if code is valid
   const row = d.prepare(
     "SELECT * FROM sms_codes WHERE phone = ? AND code = ? AND expires_at > datetime('now') AND used = 0 ORDER BY id DESC LIMIT 1"
   ).get(phone, code);
 
   if (!row) return false;
 
-  // Mark as used
+  // Mark this code as used
   d.prepare('UPDATE sms_codes SET used = 1 WHERE id = ?').run(row.id);
   return true;
 }
