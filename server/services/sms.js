@@ -50,11 +50,18 @@ async function callApi(action, params) {
 async function sendSms(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
 
-  const data = await callApi('SendSmsVerifyCode', {
+  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code');
+  const params = {
     PhoneNumber: phone,
     SignName: signName,
     OutId: '',
-  });
+  };
+  // "验证码" template type — PNV auto-fills the code variable
+  if (templateCode) {
+    params.TemplateCode = templateCode;
+    params.TemplateParam = '{"code":""}';
+  }
+  const data = await callApi('SendSmsVerifyCode', params);
 
   if (data.Code !== 'OK') {
     throw new Error(`${data.Message || data.Code}`);
