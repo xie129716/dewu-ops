@@ -38,9 +38,9 @@ app.get('/api/health', (req, res) => {
 // --- Production: serve built frontend ---
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
-// SPA fallback: all non-API routes serve index.html
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) return; // should not reach here, but guard
+// SPA fallback: all non-API routes serve index.html (Express 5.x syntax)
+app.get('/{*splat}', (req, res) => {
+  if (req.path.startsWith('/api/')) return;
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
