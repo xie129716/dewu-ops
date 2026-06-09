@@ -26,6 +26,20 @@ function verifyToken(token) {
 }
 
 // ---- User CRUD ----
+function createUserByPhone(phone, passwordHash) {
+  const db = getDB();
+  const existing = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone);
+  if (existing) {
+    throw new Error('该手机号已注册');
+  }
+  // Generate a username from phone
+  const username = `用户${phone.slice(-4)}`;
+  const result = db.prepare(
+    'INSERT INTO users (username, phone, password_hash) VALUES (?, ?, ?)'
+  ).run(username, phone, passwordHash);
+  return { id: result.lastInsertRowid, username, phone };
+}
+
 function createUser(username, passwordHash) {
   const db = getDB();
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
@@ -43,9 +57,14 @@ function getUserByUsername(username) {
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 }
 
+function getUserByPhone(phone) {
+  const db = getDB();
+  return db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
+}
+
 function getUserById(id) {
   const db = getDB();
-  return db.prepare('SELECT id, username, created_at FROM users WHERE id = ?').get(id);
+  return db.prepare('SELECT id, username, phone, created_at FROM users WHERE id = ?').get(id);
 }
 
 module.exports = {
@@ -54,6 +73,8 @@ module.exports = {
   signToken,
   verifyToken,
   createUser,
+  createUserByPhone,
   getUserByUsername,
+  getUserByPhone,
   getUserById,
 };

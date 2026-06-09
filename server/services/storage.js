@@ -20,7 +20,17 @@ function initTables() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
+      phone TEXT UNIQUE,
       password_hash TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sms_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -47,6 +57,12 @@ function initTables() {
 }
 
 function migrate() {
+  // Add phone to users if missing
+  const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!userCols.includes('phone')) {
+    db.exec("ALTER TABLE users ADD COLUMN phone TEXT UNIQUE");
+  }
+
   // Add user_id to history if missing (pre-auth databases)
   const histCols = db.prepare("PRAGMA table_info(history)").all().map(c => c.name);
   if (!histCols.includes('user_id')) {
@@ -167,6 +183,28 @@ function parseHistoryRow(row) {
   };
 }
 
+// ---- SMS Codes ----
+function saveSmsCode(phone, code, expiresAt) {
+  const d = getDB();
+  d.prepare('INSERT INTO sms_codes (phone, code, expires_at) VALUES (?, ?, ?)').run(phone, code, expiresAt);
+}
+
+function verifySmsCode(phone, code) {
+  const d = getDB();
+  // Mark old codes as used for this phone
+  d.prepare("UPDATE sms_codes SET used = 1 WHERE phone = ? AND used = 0").run(phone);
+
+  const row = d.prepare(
+    "SELECT * FROM sms_codes WHERE phone = ? AND code = ? AND expires_at > datetime('now') AND used = 0 ORDER BY id DESC LIMIT 1"
+  ).get(phone, code);
+
+  if (!row) return false;
+
+  // Mark as used
+  d.prepare('UPDATE sms_codes SET used = 1 WHERE id = ?').run(row.id);
+  return true;
+}
+
 module.exports = {
   getDB,
   saveSetting,
@@ -177,4 +215,6 @@ module.exports = {
   deleteHistory,
   updateHistoryStatus,
   getPendingHistory,
+  saveSmsCode,
+  verifySmsCode,
 };

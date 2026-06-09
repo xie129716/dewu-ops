@@ -17,8 +17,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(username, password) {
-    const data = await api.post('/auth/login', { username, password });
+  async function login(payload) {
+    // payload: { username, password } or { phone, password }
+    const data = await api.post('/auth/login', payload);
     token.value = data.token;
     user.value = data.user;
     localStorage.setItem('dewu_token', data.token);
@@ -26,8 +27,18 @@ export const useAuthStore = defineStore('auth', () => {
     return data;
   }
 
-  async function register(username, password) {
-    const data = await api.post('/auth/register', { username, password });
+  async function register(usernameOrPhone, codeOrPassword, maybePassword) {
+    // Phone-based registration: (phone, code, password)
+    // Username-based registration: (username, password)
+    let payload;
+    if (maybePassword) {
+      // Phone + code + password
+      payload = { phone: usernameOrPhone, code: codeOrPassword, password: maybePassword };
+    } else {
+      // Username + password (legacy)
+      payload = { username: usernameOrPhone, password: codeOrPassword };
+    }
+    const data = await api.post('/auth/register', payload);
     token.value = data.token;
     user.value = data.user;
     localStorage.setItem('dewu_token', data.token);

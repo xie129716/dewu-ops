@@ -9,8 +9,8 @@
 
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="form-group">
-          <label>用户名</label>
-          <input v-model="username" class="input" placeholder="输入用户名" autocomplete="username" />
+          <label>用户名 / 手机号</label>
+          <input v-model="account" class="input" placeholder="输入用户名或手机号" autocomplete="username" />
         </div>
         <div class="form-group">
           <label>密码</label>
@@ -39,20 +39,25 @@ import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const auth = useAuthStore();
 
-const username = ref('');
+const account = ref('');
 const password = ref('');
 const error = ref('');
 const loading = ref(false);
 
 async function handleLogin() {
   error.value = '';
-  if (!username.value || !password.value) {
-    error.value = '请填写用户名和密码';
+  if (!account.value || !password.value) {
+    error.value = '请填写账号和密码';
     return;
   }
   loading.value = true;
   try {
-    await auth.login(username.value, password.value);
+    // Auto-detect: phone number or username
+    const isPhone = /^1[3-9]\d{9}$/.test(account.value);
+    const payload = isPhone
+      ? { phone: account.value, password: password.value }
+      : { username: account.value, password: password.value };
+    await auth.login(payload);
     router.push('/');
   } catch (e) {
     error.value = e.message;
