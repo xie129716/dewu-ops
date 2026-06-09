@@ -1,5 +1,5 @@
-const DysmsapiClient = require('@alicloud/dysmsapi20170525').default;
-const { SendSmsRequest } = require('@alicloud/dysmsapi20170525');
+const DypnsapiClient = require('@alicloud/dypnsapi20170525').default;
+const { SendSmsVerifyCodeRequest, CheckSmsVerifyCodeRequest } = require('@alicloud/dypnsapi20170525');
 const { Config } = require('@alicloud/openapi-client');
 const { getSetting } = require('./storage');
 
@@ -11,36 +11,55 @@ function createClient() {
     throw new Error('短信服务未配置');
   }
 
-  return new DysmsapiClient(new Config({
+  return new DypnsapiClient(new Config({
     accessKeyId,
     accessKeySecret,
-    endpoint: 'dysmsapi.aliyuncs.com',
+    endpoint: 'dypnsapi.aliyuncs.com',
   }));
 }
 
 /**
- * Send SMS verification code via 短信服务 (Dysmsapi).
- * Returns the generated code for later verification.
+ * Send SMS verification code via 号码认证 PNV.
+ * PNV auto-generates the code and fills template variable.
  */
-async function sendSms(phone, code) {
+async function sendSms(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
   const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_335015865';
   const client = createClient();
 
-  const req = new SendSmsRequest({
-    phoneNumbers: phone,
+  const req = new SendSmsVerifyCodeRequest({
+    phoneNumber: phone,
     signName: signName || undefined,
     templateCode: templateCode,
-    templateParam: JSON.stringify({ code }),
+    templateParam: '{}',
   });
 
-  const result = await client.sendSms(req);
+  const result = await client.sendSmsVerifyCode(req);
 
   if (result.body.code !== 'OK') {
-    throw new Error(`${result.body.message} (${result.body.code})`);
+    throw new Error(`${result.body.message}`);
   }
 
-  return { bizId: result.body.bizId };
+  return { bizToken: result.body.bizToken, requestId: result.body.requestId };
 }
 
-module.exports = { sendSms };
+/**
+ * Verify SMS code via PNV.
+ */
+async function checkSmsCode(phone, code, bizToken) {
+  const client = createClient();
+
+  const req = new CheckSmsVerifyCodeRequest({
+    phoneNumber: phone,
+    verifyCode: code,
+    bizToken: bizToken,
+  });
+
+  const result = await client.checkSmsVerifyCode(req);
+
+  if (result.body.code === 'OK') return true;
+  if (result.body.code === 'INVALID_VERIFY_CODE') return false;
+  throw new Error(`${result.body.message}`);
+}
+
+module.exports = { sendSms, checkSmsCode };
