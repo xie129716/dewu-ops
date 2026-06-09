@@ -30,7 +30,6 @@ async function sendSmsCode(phone) {
     phoneNumber: phone,
     signName: signName || undefined,
     templateCode: templateCode || undefined,
-    templateParam: JSON.stringify({ code: '' }),
   });
 
   const result = await client.sendSmsVerifyCode(req);
