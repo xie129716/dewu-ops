@@ -24,15 +24,20 @@ function createClient() {
  */
 async function sendSms(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
-  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code') || 'SMS_335015865';
   const client = createClient();
 
-  const req = new SendSmsVerifyCodeRequest({
+  const templateCode = process.env.SMS_TEMPLATE_CODE || getSetting(0, 'sms_template_code');
+  const client = createClient();
+
+  const reqParams = {
     phoneNumber: phone,
     signName: signName || undefined,
-    templateCode: templateCode,
-    templateParam: '{}',
-  });
+  };
+  // Try with TemplateCode, let PNV auto-fill templateParam
+  if (templateCode) {
+    reqParams.templateCode = templateCode;
+  }
+  const req = new SendSmsVerifyCodeRequest(reqParams);
 
   const result = await client.sendSmsVerifyCode(req);
 
