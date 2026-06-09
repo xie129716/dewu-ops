@@ -2,7 +2,7 @@
  * Push.spug.cc SMS service
  * Simple HTTP API — no SDK needed
  */
-const SMS_URL = process.env.SMS_API_URL || 'https://push.spug.cc/sms/A27Lsf3fs2bgEY';
+const SMS_URL = process.env.SMS_API_URL || 'https://push.spug.cc/sms/6_AhOhxUT5-_is94VbLSUg';
 
 async function sendSms(phone, code) {
   const body = {
