@@ -1,63 +1,78 @@
-const DypnsapiClient = require('@alicloud/dypnsapi20170525').default;
-const { SendSmsVerifyCodeRequest, CheckSmsVerifyCodeRequest } = require('@alicloud/dypnsapi20170525');
-const { Config } = require('@alicloud/openapi-client');
+const crypto = require('crypto');
 const { getSetting } = require('./storage');
 
-function createClient() {
+const ENDPOINT = 'https://dypnsapi.aliyuncs.com';
+
+function getCredentials() {
   const accessKeyId = process.env.ALIBABA_ACCESS_KEY_ID || getSetting(0, 'sms_access_key_id');
   const accessKeySecret = process.env.ALIBABA_ACCESS_KEY_SECRET || getSetting(0, 'sms_access_key_secret');
-
   if (!accessKeyId || !accessKeySecret) {
     throw new Error('短信服务未配置');
   }
-
-  return new DypnsapiClient(new Config({
-    accessKeyId,
-    accessKeySecret,
-    endpoint: 'dypnsapi.aliyuncs.com',
-  }));
+  return { accessKeyId, accessKeySecret };
 }
 
-/**
- * Send SMS verification code via 号码认证 PNV.
- * PNV auto-generates the code and fills template variable.
- */
+// Build Alibaba Cloud API signature (HMAC-SHA1)
+function buildSignature(params, secret) {
+  const sortedKeys = Object.keys(params).sort();
+  const canonicalized = sortedKeys.map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
+  const stringToSign = `POST&${encodeURIComponent('/')}&${encodeURIComponent(canonicalized)}`;
+  return crypto.createHmac('sha1', `${secret}&`).update(stringToSign).digest('base64');
+}
+
+async function callApi(action, params) {
+  const { accessKeyId, accessKeySecret } = getCredentials();
+
+  const query = {
+    AccessKeyId: accessKeyId,
+    Action: action,
+    Format: 'JSON',
+    SignatureMethod: 'HMAC-SHA1',
+    SignatureNonce: Date.now() + Math.random().toString(36),
+    SignatureVersion: '1.0',
+    Timestamp: new Date().toISOString(),
+    Version: '2017-05-25',
+    ...params,
+  };
+
+  query.Signature = buildSignature(query, accessKeySecret);
+
+  const qs = Object.keys(query).sort().map(k => `${encodeURIComponent(k)}=${encodeURIComponent(query[k])}`).join('&');
+
+  const resp = await fetch(`${ENDPOINT}/?${qs}`, { method: 'POST' });
+  const text = await resp.text();
+
+  // Parse JSON response
+  const data = JSON.parse(text);
+  return data;
+}
+
 async function sendSms(phone) {
   const signName = process.env.SMS_SIGN_NAME || getSetting(0, 'sms_sign_name');
-  const client = createClient();
 
-  // Use PNV built-in template — no custom TemplateCode
-  const req = new SendSmsVerifyCodeRequest({
-    phoneNumber: phone,
-    signName: signName || undefined,
+  const data = await callApi('SendSmsVerifyCode', {
+    PhoneNumber: phone,
+    SignName: signName,
+    OutId: '',
   });
 
-  const result = await client.sendSmsVerifyCode(req);
-
-  if (result.body.code !== 'OK') {
-    throw new Error(`${result.body.message}`);
+  if (data.Code !== 'OK') {
+    throw new Error(`${data.Message || data.Code}`);
   }
 
-  return { bizToken: result.body.bizToken, requestId: result.body.requestId };
+  return { bizToken: data.BizToken, requestId: data.RequestId };
 }
 
-/**
- * Verify SMS code via PNV.
- */
 async function checkSmsCode(phone, code, bizToken) {
-  const client = createClient();
-
-  const req = new CheckSmsVerifyCodeRequest({
-    phoneNumber: phone,
-    verifyCode: code,
-    bizToken: bizToken,
+  const data = await callApi('CheckSmsVerifyCode', {
+    PhoneNumber: phone,
+    VerifyCode: code,
+    BizToken: bizToken,
   });
 
-  const result = await client.checkSmsVerifyCode(req);
-
-  if (result.body.code === 'OK') return true;
-  if (result.body.code === 'INVALID_VERIFY_CODE') return false;
-  throw new Error(`${result.body.message}`);
+  if (data.Code === 'OK') return true;
+  if (data.Code === 'INVALID_VERIFY_CODE') return false;
+  throw new Error(`${data.Message || data.Code}`);
 }
 
 module.exports = { sendSms, checkSmsCode };
