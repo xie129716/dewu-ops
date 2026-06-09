@@ -37,6 +37,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Debug: get server's outbound IP
+app.get('/api/debug/ip', async (req, res) => {
+  try {
+    const r = await fetch('https://api.ipify.org');
+    const ip = await r.text();
+    res.json({ ip: ip.trim() });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 // --- Production: serve built frontend ---
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
