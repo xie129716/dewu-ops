@@ -1,0 +1,8 @@
+[build]
+  builder = "nixpacks"
+  configPath = "server/"
+
+[deploy]
+  numReplicas = 1
+  startCommand = "node index.js"
+  restartPolicyType = "ON_FAILURE"

@@ -7,3 +7,5 @@ server/uploads/*
 logs/
 .DS_Store
 Thumbs.db
+
+.vercel
