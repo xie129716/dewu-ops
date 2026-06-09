@@ -26,25 +26,21 @@ function createClient() {
  * Uses ##code## placeholder — PNV auto-generates the code.
  * Returns the generated code for dev mode fallback.
  */
-async function sendSms(phone) {
+async function sendSms(phone, code) {
   const client = createClient();
 
   const result = await client.request('SendSmsVerifyCode', {
     PhoneNumber: phone,
     SignName: SIGN_NAME,
     TemplateCode: TEMPLATE_CODE,
-    // PNV auto-generates code via ##code## placeholder
-    TemplateParam: JSON.stringify({ code: '##code##', min: '5' }),
+    TemplateParam: JSON.stringify({ code, min: '5' }),
   });
 
   if (result.Code !== 'OK') {
     throw new Error(`${result.Message}`);
   }
 
-  return {
-    verifyCode: result.Model?.VerifyCode || '',
-    bizId: result.Model?.BizId || '',
-  };
+  return { bizId: result.Model?.BizId || '' };
 }
 
 /**
