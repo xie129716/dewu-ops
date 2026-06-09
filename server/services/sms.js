@@ -33,11 +33,8 @@ async function sendSms(phone) {
     PhoneNumber: phone,
     SignName: SIGN_NAME,
     TemplateCode: TEMPLATE_CODE,
-    // "##code##" tells PNV to auto-generate the verification code
-    // "min" variable sets validity in minutes
+    // PNV auto-generates code via ##code## placeholder
     TemplateParam: JSON.stringify({ code: '##code##', min: '5' }),
-    CodeLength: 6,
-    ReturnVerifyCode: true,
   });
 
   if (result.Code !== 'OK') {
