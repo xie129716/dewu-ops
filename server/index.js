@@ -12,6 +12,7 @@ const generateRoutes = require('./routes/generate');
 const workflowRoutes = require('./routes/workflow');
 const historyRoutes = require('./routes/history');
 const pointsRoutes = require('./routes/points');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,6 +34,7 @@ app.use('/api/image', generateRoutes);
 app.use('/api/workflow', workflowRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/points', pointsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
