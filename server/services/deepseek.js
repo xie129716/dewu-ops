@@ -1,11 +1,11 @@
 const OpenAI = require('openai');
-const { getSetting } = require('./storage');
+const { getSystemConfig } = require('./storage');
 
 /**
  * Create a DeepSeek API client
  */
 function createClient(userId) {
-  const apiKey = getSetting(userId, 'deepseek_api_key');
+  const apiKey = process.env.DEEPSEEK_API_KEY || getSystemConfig('deepseek_api_key');
   if (!apiKey) {
     throw new Error('DeepSeek API Key 未配置，请先在设置页面配置');
   }

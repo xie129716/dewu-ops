@@ -5,11 +5,13 @@ const authMiddleware = require('../middleware/auth');
 const { recognizeProduct } = require('../services/bailian');
 const { generateCopy } = require('../services/deepseek');
 const { submitImageEdit } = require('../services/img65535');
-const { createHistory } = require('../services/storage');
+const { createHistory, deductPoints } = require('../services/storage');
+
+const POINT_COST = 10;
 
 router.use(authMiddleware);
 
-router.post('/run', async (req, res) => {
+router.post('/run', authMiddleware.requirePoints(POINT_COST), async (req, res) => {
   try {
     const { imageUrl, copyStyle, imageSize } = req.body;
     if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
@@ -18,30 +20,29 @@ router.post('/run', async (req, res) => {
     const localPath = path.join(__dirname, '..', imageUrl);
     const results = {};
 
-    // Step 1: Recognize
-    console.log('[Workflow] Step 1: Recognizing...');
-    const recognition = await recognizeProduct(localPath, uid);
+    // Step 1: Recognize (free)
+    const recognition = await recognizeProduct(localPath);
     results.recognition = recognition;
 
     // Step 2: Generate copy
-    console.log('[Workflow] Step 2: Generating copy...');
     const copy = await generateCopy(
       { brand: recognition.brand, productName: recognition.productName, category: recognition.category },
-      { style: copyStyle },
-      uid
+      { style: copyStyle }
     );
     results.copy = copy;
 
     // Step 3: Generate image
-    console.log('[Workflow] Step 3: Submitting image-to-image...');
     const imageJob = await submitImageEdit({
       imagePath: localPath,
       prompt: buildImagePrompt(recognition, copy),
       size: imageSize || '2048x2048',
-    }, uid);
+    });
     results.imageJob = imageJob;
 
-    // Save to history
+    // Deduct points
+    deductPoints(uid, POINT_COST);
+
+    // Save history
     const historyRecord = createHistory(uid, {
       original_image: imageUrl,
       recognition_result: recognition,
@@ -51,6 +52,7 @@ router.post('/run', async (req, res) => {
       job_id: imageJob.jobId,
     });
     results.historyId = historyRecord.id;
+    results.cost = POINT_COST;
 
     res.json({ success: true, ...results });
   } catch (err) {

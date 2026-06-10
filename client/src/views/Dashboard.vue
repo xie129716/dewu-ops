@@ -50,6 +50,17 @@
             <h3>🎮 操作面板</h3>
           </div>
 
+          <!-- Check-in -->
+          <div class="checkin-section">
+            <button
+              class="btn btn-accent btn-lg full-width"
+              :disabled="checkedIn || checkingIn"
+              @click="handleCheckin"
+            >
+              {{ checkedIn ? '✅ 今日已签到 (+20)' : '🎁 每日签到 +20 积分' }}
+            </button>
+          </div>
+
           <!-- Step-by-step buttons -->
           <div class="control-group">
             <button
@@ -57,7 +68,7 @@
               :disabled="!workflow.uploadedImage || workflow.processing"
               @click="handleRecognize"
             >
-              🔍 识图
+              🔍 识图 <span class="cost-tag free">免费</span>
             </button>
 
             <button
@@ -65,7 +76,7 @@
               :disabled="!workflow.recognition || workflow.processing"
               @click="handleGenerateCopy"
             >
-              ✍️ 生成文案
+              ✍️ 生成文案 <span class="cost-tag">🪙4</span>
             </button>
 
             <button
@@ -73,7 +84,7 @@
               :disabled="!workflow.copy || workflow.processing"
               @click="handleGenerateImage"
             >
-              🖼️ 生成图片
+              🖼️ 生成图片 <span class="cost-tag">🪙8</span>
             </button>
           </div>
 
@@ -87,7 +98,7 @@
             :disabled="!workflow.uploadedImage || workflow.processing"
             @click="handleRunPipeline"
           >
-            🚀 一键生成全部
+            🚀 一键生成全部 <span class="cost-tag accent">🪙10</span>
           </button>
 
           <!-- Polling status for async image generation -->
@@ -135,8 +146,10 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useWorkflowStore } from '@/stores/workflow';
+import { useAuthStore } from '@/stores/auth';
+import api from '@/api';
 import ImageUploader from '@/components/ImageUploader.vue';
 import RecognitionResult from '@/components/RecognitionResult.vue';
 import CopyDisplay from '@/components/CopyDisplay.vue';
@@ -146,10 +159,35 @@ import WorkflowProgress from '@/components/WorkflowProgress.vue';
 import { downloadImage } from '@/utils/download';
 
 const workflow = useWorkflowStore();
+const auth = useAuthStore();
 const uploadError = ref('');
+const checkedIn = ref(false);
+const checkingIn = ref(false);
 let pollTimer = null;
 
 const toast = ref({ show: false, message: '', type: 'success' });
+
+async function loadPoints() {
+  try {
+    const data = await api.get('/points/balance');
+    checkedIn.value = data.checkedIn;
+    auth.user.points = data.points;
+  } catch (e) { /* ignore */ }
+}
+
+async function handleCheckin() {
+  checkingIn.value = true;
+  try {
+    const data = await api.post('/points/checkin');
+    auth.user.points = data.points;
+    checkedIn.value = true;
+    showToast('🎉 签到成功！+20 积分');
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    checkingIn.value = false;
+  }
+}
 
 function showToast(message, type = 'success') {
   toast.value = { show: true, message, type };
@@ -169,44 +207,6 @@ async function handleUpload(file) {
     showToast('图片上传成功');
   } catch (e) {
     uploadError.value = e.message;
-    showToast(e.message, 'error');
-  }
-}
-
-async function handleRecognize() {
-  try {
-    await workflow.recognizeProduct();
-    showToast('商品识别完成');
-  } catch (e) {
-    showToast(e.message, 'error');
-  }
-}
-
-async function handleGenerateCopy() {
-  try {
-    await workflow.generateCopy();
-    showToast('文案生成完成');
-  } catch (e) {
-    showToast(e.message, 'error');
-  }
-}
-
-async function handleGenerateImage() {
-  try {
-    await workflow.generateImage();
-    startPolling();
-    showToast('图片生成任务已提交');
-  } catch (e) {
-    showToast(e.message, 'error');
-  }
-}
-
-async function handleRunPipeline() {
-  try {
-    await workflow.runFullPipeline();
-    startPolling();
-    showToast('全链路执行中：识别+文案完成，图片生成中...');
-  } catch (e) {
     showToast(e.message, 'error');
   }
 }
@@ -256,8 +256,49 @@ function handleReset() {
   showToast('已重置');
 }
 
-// Clean up polling on unmount
-import { onUnmounted } from 'vue';
+// Refresh points after operations
+async function handleRecognize() {
+  try {
+    await workflow.recognizeProduct();
+    showToast('商品识别完成');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function handleGenerateCopy() {
+  try {
+    await workflow.generateCopy();
+    await auth.refreshPoints();
+    showToast('文案生成完成 (-4 积分)');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function handleGenerateImage() {
+  try {
+    await workflow.generateImage();
+    await auth.refreshPoints();
+    startPolling();
+    showToast('图片生成任务已提交 (-8 积分)');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function handleRunPipeline() {
+  try {
+    await workflow.runFullPipeline();
+    await auth.refreshPoints();
+    startPolling();
+    showToast('全链路执行中 (-10 积分)');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+onMounted(() => loadPoints());
 onUnmounted(() => stopPolling());
 </script>
 
@@ -349,9 +390,21 @@ onUnmounted(() => stopPolling());
   font-size: 13px;
 }
 
-.full-width {
-  width: 100%;
+.full-width { width: 100%; }
+
+.checkin-section { margin-bottom: 16px; }
+
+.cost-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(250, 140, 22, 0.15);
+  color: var(--dewu-orange);
+  margin-left: 4px;
 }
+.cost-tag.free { background: rgba(82, 196, 26, 0.15); color: var(--dewu-green); }
+.cost-tag.accent { background: rgba(255, 77, 79, 0.2); color: var(--dewu-accent); }
 
 .loading-spinner {
   width: 28px;

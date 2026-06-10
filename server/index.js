@@ -11,6 +11,7 @@ const copyRoutes = require('./routes/copy');
 const generateRoutes = require('./routes/generate');
 const workflowRoutes = require('./routes/workflow');
 const historyRoutes = require('./routes/history');
+const pointsRoutes = require('./routes/points');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.use('/api/copy', copyRoutes);
 app.use('/api/image', generateRoutes);
 app.use('/api/workflow', workflowRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/points', pointsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -53,6 +55,16 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: err.message });
   }
   res.status(500).json({ error: '服务器内部错误' });
+});
+
+// Migrate per-user API keys to system config (one-time)
+const { getSetting, setSystemConfig, getSystemConfig } = require('./services/storage');
+const KEYS = ['bailian_api_key', 'deepseek_api_key', 'img65535_api_key'];
+KEYS.forEach(k => {
+  if (!getSystemConfig(k)) {
+    const val = getSetting(0, k) || getSetting(1, k);
+    if (val) setSystemConfig(k, val);
+  }
 });
 
 // Start server

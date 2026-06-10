@@ -18,7 +18,7 @@ router.post('/register', async (req, res) => {
     const hash = await hashPassword(password);
     const user = createUser(username, hash);
     const token = signToken(user);
-    res.json({ success: true, token, user: { id: user.id, username: user.username } });
+    res.json({ success: true, token, user: { id: user.id, username: user.username, points: 0 } });
   } catch (err) {
     if (err.message === '用户名已存在') return res.status(409).json({ error: err.message });
     res.status(500).json({ error: err.message });
@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: '账号或密码错误' });
 
     const token = signToken(user);
-    res.json({ success: true, token, user: { id: user.id, username: user.username } });
+    res.json({ success: true, token, user: { id: user.id, username: user.username, points: user.points || 0 } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

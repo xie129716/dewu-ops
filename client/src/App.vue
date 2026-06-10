@@ -17,6 +17,7 @@
         </router-link>
       </div>
       <div class="nav-user">
+        <span class="points-badge">🪙 {{ auth.points }} 积分</span>
         <span class="user-greeting">👤 {{ auth.user?.username }}</span>
         <button class="btn btn-ghost btn-sm" @click="handleLogout">退出</button>
       </div>
@@ -81,6 +82,14 @@ function handleLogout() {
   gap: 12px;
 }
 
+.points-badge {
+  background: linear-gradient(135deg, #fa8c16, #ffc53d);
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
 .user-greeting { color: #ccc; font-size: 14px; }
 
 .app-main { min-height: calc(100vh - 60px); background: #0f0f0f; }

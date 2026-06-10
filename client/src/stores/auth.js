@@ -7,8 +7,8 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('dewu_token') || '');
 
   const isLoggedIn = computed(() => !!token.value && !!user.value);
+  const points = computed(() => user.value?.points || 0);
 
-  // Set up the API Authorization header
   function applyToken() {
     if (token.value) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
@@ -18,7 +18,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(payload) {
-    // payload: { username, password } or { phone, password }
     const data = await api.post('/auth/login', payload);
     token.value = data.token;
     user.value = data.user;
@@ -41,11 +40,17 @@ export const useAuthStore = defineStore('auth', () => {
     applyToken();
     try {
       const data = await api.get('/auth/me');
-      user.value = data;
+      user.value = { ...data, points: data.points || 0 };
     } catch (e) {
-      // Token expired or invalid
       logout();
     }
+  }
+
+  async function refreshPoints() {
+    try {
+      const data = await api.get('/points/balance');
+      if (user.value) user.value.points = data.points;
+    } catch (e) { /* ignore */ }
   }
 
   function logout() {
@@ -55,8 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
     delete api.defaults.headers.common['Authorization'];
   }
 
-  // Apply token on init
   applyToken();
 
-  return { user, token, isLoggedIn, login, register, fetchUser, logout };
+  return { user, token, isLoggedIn, points, login, register, fetchUser, refreshPoints, logout };
 });

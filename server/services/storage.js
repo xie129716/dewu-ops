@@ -20,20 +20,29 @@ function initTables() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
-      phone TEXT UNIQUE,
       password_hash TEXT NOT NULL,
+      points INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS sms_codes (
+    -- System-level config (API keys, admin settings — no user_id)
+    CREATE TABLE IF NOT EXISTS system_config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- Daily check-ins
+    CREATE TABLE IF NOT EXISTS checkins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      phone TEXT NOT NULL,
-      code TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
+      user_id INTEGER NOT NULL,
+      check_date TEXT NOT NULL,
+      points_earned INTEGER DEFAULT 20,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, check_date)
     );
 
+    -- Per-user settings (deprecated — kept for compatibility)
     CREATE TABLE IF NOT EXISTS settings (
       user_id INTEGER NOT NULL,
       key TEXT NOT NULL,
@@ -57,13 +66,14 @@ function initTables() {
 }
 
 function migrate() {
-  // Add phone to users if missing
   const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!userCols.includes('points')) {
+    db.exec("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0");
+  }
   if (!userCols.includes('phone')) {
-    db.exec("ALTER TABLE users ADD COLUMN phone TEXT UNIQUE");
+    try { db.exec("ALTER TABLE users ADD COLUMN phone TEXT"); } catch (e) { /* may exist */ }
   }
 
-  // Add user_id to history if missing (pre-auth databases)
   const histCols = db.prepare("PRAGMA table_info(history)").all().map(c => c.name);
   if (!histCols.includes('user_id')) {
     db.exec("ALTER TABLE history ADD COLUMN user_id INTEGER DEFAULT 0");
@@ -71,27 +81,25 @@ function migrate() {
   if (!histCols.includes('job_id')) {
     db.exec("ALTER TABLE history ADD COLUMN job_id TEXT");
   }
-
-  // Migrate settings: if old format (no user_id), recreate
-  const setCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
-  if (!setCols.includes('user_id')) {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS settings_new (
-        user_id INTEGER NOT NULL DEFAULT 0,
-        key TEXT NOT NULL,
-        value TEXT NOT NULL,
-        updated_at TEXT DEFAULT (datetime('now')),
-        PRIMARY KEY (user_id, key)
-      );
-      INSERT OR IGNORE INTO settings_new (key, value, updated_at)
-        SELECT key, value, updated_at FROM settings;
-      DROP TABLE settings;
-      ALTER TABLE settings_new RENAME TO settings;
-    `);
-  }
 }
 
-// ---- Settings CRUD ----
+// ---- System Config ----
+function getSystemConfig(key) {
+  const d = getDB();
+  const row = d.prepare('SELECT value FROM system_config WHERE key = ?').get(key);
+  return row ? row.value : null;
+}
+
+function setSystemConfig(key, value) {
+  const d = getDB();
+  d.prepare(`
+    INSERT INTO system_config (key, value, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+  `).run(key, value);
+}
+
+// ---- Per-user Settings (for compatibility) ----
 function saveSetting(userId, key, value) {
   const d = getDB();
   d.prepare(`
@@ -107,6 +115,47 @@ function getSetting(userId, key) {
   return row ? row.value : null;
 }
 
+// ---- Points ----
+function getUserPoints(userId) {
+  const d = getDB();
+  const row = d.prepare('SELECT points FROM users WHERE id = ?').get(userId);
+  return row ? row.points : 0;
+}
+
+function addPoints(userId, amount) {
+  const d = getDB();
+  d.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(amount, userId);
+}
+
+function deductPoints(userId, amount) {
+  const d = getDB();
+  const row = d.prepare('SELECT points FROM users WHERE id = ?').get(userId);
+  if (!row || row.points < amount) return false;
+  d.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(amount, userId);
+  return true;
+}
+
+// ---- Check-in ----
+function checkinToday(userId) {
+  const d = getDB();
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    d.prepare('INSERT INTO checkins (user_id, check_date, points_earned) VALUES (?, ?, 20)').run(userId, today);
+    addPoints(userId, 20);
+    return true;
+  } catch (e) {
+    // UNIQUE constraint — already checked in today
+    return false;
+  }
+}
+
+function hasCheckedInToday(userId) {
+  const d = getDB();
+  const today = new Date().toISOString().slice(0, 10);
+  const row = d.prepare('SELECT id FROM checkins WHERE user_id = ? AND check_date = ?').get(userId, today);
+  return !!row;
+}
+
 // ---- History CRUD ----
 function createHistory(userId, record) {
   const d = getDB();
@@ -115,13 +164,11 @@ function createHistory(userId, record) {
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
-    userId,
-    record.original_image || null,
+    userId, record.original_image || null,
     record.recognition_result ? JSON.stringify(record.recognition_result) : null,
     record.copy_result ? JSON.stringify(record.copy_result) : null,
     record.generated_images ? JSON.stringify(record.generated_images) : null,
-    record.status || 'completed',
-    record.job_id || null
+    record.status || 'completed', record.job_id || null
   );
   return { id: result.lastInsertRowid, ...record };
 }
@@ -130,10 +177,7 @@ function getHistoryList(userId, page = 1, pageSize = 20) {
   const d = getDB();
   const offset = (page - 1) * pageSize;
   const total = d.prepare('SELECT COUNT(*) as count FROM history WHERE user_id = ?').get(userId).count;
-  const rows = d.prepare(
-    'SELECT * FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
-  ).all(userId, pageSize, offset);
-
+  const rows = d.prepare('SELECT * FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all(userId, pageSize, offset);
   return { total, page, pageSize, list: rows.map(parseHistoryRow) };
 }
 
@@ -152,10 +196,7 @@ function updateHistoryStatus(userId, id, status, generatedImages, jobId) {
   const d = getDB();
   const params = [status, generatedImages ? JSON.stringify(generatedImages) : null];
   let sql = 'UPDATE history SET status = ?, generated_images = ?';
-  if (jobId) {
-    sql += ', job_id = ?';
-    params.push(jobId);
-  }
+  if (jobId) { sql += ', job_id = ?'; params.push(jobId); }
   sql += ' WHERE id = ? AND user_id = ?';
   params.push(id, userId);
   d.prepare(sql).run(...params);
@@ -163,56 +204,25 @@ function updateHistoryStatus(userId, id, status, generatedImages, jobId) {
 
 function getPendingHistory() {
   const d = getDB();
-  const rows = d.prepare(
-    "SELECT * FROM history WHERE status = 'pending_image' AND job_id IS NOT NULL"
-  ).all();
+  const rows = d.prepare("SELECT * FROM history WHERE status = 'pending_image' AND job_id IS NOT NULL").all();
   return rows.map(parseHistoryRow);
 }
 
 function parseHistoryRow(row) {
   return {
-    id: row.id,
-    user_id: row.user_id,
-    original_image: row.original_image,
+    id: row.id, user_id: row.user_id, original_image: row.original_image,
     recognition_result: row.recognition_result ? JSON.parse(row.recognition_result) : null,
     copy_result: row.copy_result ? JSON.parse(row.copy_result) : null,
     generated_images: row.generated_images ? JSON.parse(row.generated_images) : null,
-    status: row.status,
-    job_id: row.job_id || null,
-    created_at: row.created_at,
+    status: row.status, job_id: row.job_id || null, created_at: row.created_at,
   };
 }
 
-// ---- SMS Codes ----
-function saveSmsCode(phone, code, expiresAt) {
-  const d = getDB();
-  d.prepare('INSERT INTO sms_codes (phone, code, expires_at) VALUES (?, ?, ?)').run(phone, code, expiresAt);
-}
-
-function verifySmsCode(phone, code) {
-  const d = getDB();
-  // First check if code is valid
-  const row = d.prepare(
-    "SELECT * FROM sms_codes WHERE phone = ? AND code = ? AND expires_at > datetime('now') AND used = 0 ORDER BY id DESC LIMIT 1"
-  ).get(phone, code);
-
-  if (!row) return false;
-
-  // Mark this code as used
-  d.prepare('UPDATE sms_codes SET used = 1 WHERE id = ?').run(row.id);
-  return true;
-}
-
 module.exports = {
-  getDB,
-  saveSetting,
-  getSetting,
-  createHistory,
-  getHistoryList,
-  getHistoryById,
-  deleteHistory,
-  updateHistoryStatus,
-  getPendingHistory,
-  saveSmsCode,
-  verifySmsCode,
+  getDB, saveSetting, getSetting,
+  getSystemConfig, setSystemConfig,
+  getUserPoints, addPoints, deductPoints,
+  checkinToday, hasCheckedInToday,
+  createHistory, getHistoryList, getHistoryById, deleteHistory,
+  updateHistoryStatus, getPendingHistory,
 };

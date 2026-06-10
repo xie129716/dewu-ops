@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const { getSetting } = require('./storage');
+const { getSystemConfig } = require('./storage');
 
 const BASE_URL = 'https://img-cn.65535.space';
 
 function getApiKey(userId) {
-  const apiKey = getSetting(userId, 'img65535_api_key');
+  const apiKey = (process.env.IMG65535_API_KEY || getSystemConfig('img65535_api_key'));
   if (!apiKey) {
     throw new Error('65535 图片平台 API Key 未配置，请先在设置页面配置');
   }

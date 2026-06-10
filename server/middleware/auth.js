@@ -1,10 +1,6 @@
 const { verifyToken } = require('../services/auth');
+const { getUserPoints } = require('../services/storage');
 
-/**
- * JWT authentication middleware.
- * Extracts token from Authorization header, verifies it,
- * and attaches user info to req.user.
- */
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -14,11 +10,31 @@ function authMiddleware(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = verifyToken(token);
-    req.user = { id: decoded.id, username: decoded.username };
+    req.user = { id: decoded.id, username: decoded.username, points: getUserPoints(decoded.id) };
     next();
   } catch (err) {
     return res.status(401).json({ error: '登录已过期，请重新登录' });
   }
 }
 
+/**
+ * Middleware factory: require minimum points to proceed.
+ * Usage: router.post('/xxx', requirePoints(8), handler)
+ */
+function requirePoints(cost) {
+  return (req, res, next) => {
+    // Reload points from DB for accuracy
+    const current = getUserPoints(req.user.id);
+    req.user.points = current;
+    if (current < cost) {
+      return res.status(402).json({ error: `积分不足，需要 ${cost} 积分，当前 ${current} 积分` });
+    }
+    // Store cost for deduction after success
+    req._pointCost = cost;
+    next();
+  };
+}
+
+authMiddleware.requirePoints = requirePoints;
 module.exports = authMiddleware;
+
