@@ -57,21 +57,98 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
+  // Helper: consume SSE stream
+  async function consumeSSE(url, body, onChunk) {
+    const token = localStorage.getItem('dewu_token');
+    const base = import.meta.env.VITE_API_BASE || '/api';
+    const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
+
+    const resp = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || '请求失败');
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') return;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) throw new Error(parsed.error);
+            onChunk(parsed);
+          } catch (e) {
+            if (e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+    }
+  }
+
   async function recognizeProduct() {
     if (!uploadedImage.value) throw new Error('请先上传图片');
     processing.value = true;
     error.value = null;
     currentStep.value = 1;
+    // Init streaming state
+    recognition.value = { brand: '', productName: '', category: '', description: '', confidence: '', streaming: true };
+
     try {
-      const data = await api.post('/recognize', { imageUrl: uploadedImage.value.imageUrl });
-      recognition.value = data;
+      let rawText = '';
+      await consumeSSE('/recognize/stream', { imageUrl: uploadedImage.value.imageUrl }, (chunk) => {
+        rawText = chunk.fullText;
+        // Try partial parse for live update
+        const parsed = tryParseRecognition(rawText);
+        recognition.value = { ...parsed, streaming: true, rawResponse: rawText };
+      });
+
+      // Final parse
+      const final = tryParseRecognition(rawText);
+      recognition.value = { ...final, streaming: false, rawResponse: rawText };
       currentStep.value = 2;
-      return data;
     } catch (e) {
       error.value = e.message;
+      recognition.value = null;
       throw e;
     } finally {
       processing.value = false;
+    }
+  }
+
+  function tryParseRecognition(text) {
+    try {
+      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
+      // Try to fix truncated JSON
+      const fixed = jsonStr.replace(/,\s*([}\]])/g, '$1');
+      const parsed = JSON.parse(fixed);
+      return {
+        brand: parsed.brand || '',
+        productName: parsed.productName || '',
+        category: parsed.category || '',
+        description: parsed.description || '',
+        confidence: parsed.confidence || '',
+      };
+    } catch (e) {
+      return { brand: '', productName: '', category: '', description: '', confidence: '' };
     }
   }
 
@@ -80,21 +157,47 @@ export const useWorkflowStore = defineStore('workflow', () => {
     processing.value = true;
     error.value = null;
     currentStep.value = 2;
+    copy.value = { title: '', content: '', tags: [], hashtags: [], streaming: true };
+
     try {
-      const data = await api.post('/copy/generate', {
+      let rawText = '';
+      await consumeSSE('/copy/generate/stream', {
         brand: recognition.value.brand,
         productName: recognition.value.productName,
         category: recognition.value.category,
         style,
+      }, (chunk) => {
+        if (chunk.done) return;
+        rawText = chunk.fullText;
+        const parsed = tryParseCopy(rawText);
+        copy.value = { ...parsed, streaming: true };
       });
-      copy.value = data;
+
+      const final = tryParseCopy(rawText);
+      copy.value = { ...final, streaming: false };
       currentStep.value = 3;
-      return data;
     } catch (e) {
       error.value = e.message;
+      copy.value = null;
       throw e;
     } finally {
       processing.value = false;
+    }
+  }
+
+  function tryParseCopy(text) {
+    try {
+      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
+      const parsed = JSON.parse(jsonStr);
+      return {
+        title: parsed.title || '',
+        content: parsed.content || '',
+        tags: parsed.tags || [],
+        hashtags: parsed.hashtags || [],
+      };
+    } catch (e) {
+      return { title: '', content: text, tags: [], hashtags: [] };
     }
   }
 

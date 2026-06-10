@@ -17,7 +17,7 @@
       <div class="skeleton" style="height:16px;width:40%"></div>
     </div>
 
-    <div v-if="data && !loading" class="recog-content">
+    <div v-if="data && !loading" class="recog-content" :class="{ streaming: data.streaming }">
       <div class="recog-field">
         <span class="field-label">品牌</span>
         <span class="field-value brand">{{ data.brand }}</span>
@@ -124,5 +124,19 @@ const confidenceLabel = computed(() => {
   color: var(--dewu-accent);
   font-size: 13px;
   margin-top: 8px;
+}
+
+.recog-content.streaming .field-value {
+  position: relative;
+}
+.recog-content.streaming .field-value::after {
+  content: '▊';
+  color: var(--dewu-blue);
+  animation: blink 0.8s infinite;
+  margin-left: 2px;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 </style>

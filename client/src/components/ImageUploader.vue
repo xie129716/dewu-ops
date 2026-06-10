@@ -7,12 +7,23 @@
 
     <div
       class="drop-zone"
-      :class="{ 'drop-zone--active': dragging, 'drop-zone--has-image': imageUrl }"
+      :class="{ 'drop-zone--active': dragging, 'drop-zone--has-image': imageUrl, 'drop-zone--uploading': uploading }"
       @dragover.prevent="dragging = true"
       @dragleave.prevent="dragging = false"
       @drop.prevent="handleDrop"
     >
-      <template v-if="!imageUrl">
+      <!-- Uploading state -->
+      <template v-if="uploading">
+        <div class="upload-animation">
+          <div class="upload-spinner"></div>
+          <p class="upload-text">上传中...</p>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill"></div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="!imageUrl">
         <div class="drop-icon">📤</div>
         <p class="drop-text">拖拽图片到此处，或点击上传</p>
         <p class="drop-hint">支持 JPG / PNG / WebP，最大 50MB</p>
@@ -52,6 +63,7 @@ import { ref, computed } from 'vue';
 
 const props = defineProps({
   modelValue: { type: Object, default: null },
+  uploading: { type: Boolean, default: false },
   error: { type: String, default: '' },
 });
 
@@ -187,5 +199,64 @@ function formatSize(bytes) {
   margin-top: 12px;
   color: var(--dewu-accent);
   font-size: 13px;
+}
+
+/* Upload animation */
+.drop-zone--uploading {
+  border-color: var(--dewu-blue) !important;
+  background: rgba(24, 144, 255, 0.03) !important;
+}
+
+.upload-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.upload-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #222;
+  border-top-color: var(--dewu-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.upload-text {
+  font-size: 16px;
+  color: var(--dewu-blue);
+  font-weight: 600;
+  animation: pulse-text 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.progress-bar-wrap {
+  width: 60%;
+  height: 4px;
+  background: #222;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, var(--dewu-blue), #69c0ff);
+  border-radius: 2px;
+  animation: progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 </style>

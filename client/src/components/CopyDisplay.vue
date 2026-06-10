@@ -16,7 +16,7 @@
       <div class="skeleton" style="height:14px;width:60%"></div>
     </div>
 
-    <div v-if="data && !loading" class="copy-content">
+    <div v-if="data && !loading" class="copy-content" :class="{ streaming: data.streaming }">
       <h4 class="copy-title">{{ data.title }}</h4>
       <div class="copy-body" :class="{ expanded }" @click="expanded = !expanded">
         <p>{{ data.content }}</p>
@@ -119,5 +119,16 @@ const expanded = ref(false);
   color: var(--dewu-accent);
   font-size: 13px;
   margin-top: 8px;
+}
+
+.copy-content.streaming .copy-body::after {
+  content: '▊';
+  color: var(--dewu-blue);
+  animation: blink 0.8s infinite;
+  margin-left: 2px;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 </style>
