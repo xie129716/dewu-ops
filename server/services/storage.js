@@ -70,6 +70,9 @@ function migrate() {
   if (!userCols.includes('points')) {
     db.exec("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0");
   }
+  if (!userCols.includes('is_admin')) {
+    db.exec("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0");
+  }
   if (!userCols.includes('phone')) {
     try { db.exec("ALTER TABLE users ADD COLUMN phone TEXT"); } catch (e) { /* may exist */ }
   }

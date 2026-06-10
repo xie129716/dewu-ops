@@ -10,7 +10,7 @@ function authMiddleware(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = verifyToken(token);
-    req.user = { id: decoded.id, username: decoded.username, points: getUserPoints(decoded.id) };
+    req.user = { id: decoded.id, username: decoded.username, isAdmin: decoded.isAdmin, points: getUserPoints(decoded.id) };
     next();
   } catch (err) {
     return res.status(401).json({ error: '登录已过期，请重新登录' });

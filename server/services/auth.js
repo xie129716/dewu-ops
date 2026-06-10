@@ -14,7 +14,7 @@ async function verifyPassword(password, hash) {
 }
 
 function signToken(user) {
-  return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  return jwt.sign({ id: user.id, username: user.username, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
 function verifyToken(token) {
@@ -36,7 +36,18 @@ function getUserByUsername(username) {
 
 function getUserById(id) {
   const db = getDB();
-  return db.prepare('SELECT id, username, created_at FROM users WHERE id = ?').get(id);
+  return db.prepare('SELECT id, username, is_admin, created_at FROM users WHERE id = ?').get(id);
 }
 
-module.exports = { hashPassword, verifyPassword, signToken, verifyToken, createUser, getUserByUsername, getUserById };
+function createAdminIfMissing() {
+  const db = getDB();
+  const admin = db.prepare("SELECT id FROM users WHERE is_admin = 1").get();
+  if (!admin) {
+    const pwd = process.env.ADMIN_PASSWORD || 'admin123';
+    const hash = require('bcryptjs').hashSync(pwd, 10);
+    db.prepare('INSERT OR IGNORE INTO users (username, password_hash, is_admin, points) VALUES (?, ?, 1, 999999)').run('admin', hash);
+    console.log('[Admin] Created admin account (username: admin)');
+  }
+}
+
+module.exports = { hashPassword, verifyPassword, signToken, verifyToken, createUser, getUserByUsername, getUserById, createAdminIfMissing };
