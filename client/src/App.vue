@@ -17,7 +17,7 @@
         </router-link>
       </div>
       <div class="nav-user">
-        <span class="points-badge">🪙 {{ auth.points }} 积分</span>
+        <span class="points-badge">⭐ {{ auth.points }} 积分</span>
         <span class="user-greeting">👤 {{ auth.user?.username }}</span>
         <button class="btn btn-ghost btn-sm" @click="handleLogout">退出</button>
       </div>

@@ -76,7 +76,7 @@
               :disabled="!workflow.recognition || workflow.processing"
               @click="handleGenerateCopy"
             >
-              ✍️ 生成文案 <span class="cost-tag">🪙4</span>
+              ✍️ 生成文案 <span class="cost-tag">⭐4</span>
             </button>
 
             <button
@@ -84,7 +84,7 @@
               :disabled="!workflow.copy || workflow.processing"
               @click="handleGenerateImage"
             >
-              🖼️ 生成图片 <span class="cost-tag">🪙8</span>
+              🖼️ 生成图片 <span class="cost-tag">⭐8</span>
             </button>
           </div>
 
@@ -98,7 +98,7 @@
             :disabled="!workflow.uploadedImage || workflow.processing"
             @click="handleRunPipeline"
           >
-            🚀 一键生成全部 <span class="cost-tag accent">🪙10</span>
+            🚀 一键生成全部 <span class="cost-tag accent">⭐10</span>
           </button>
 
           <!-- Polling status for async image generation -->

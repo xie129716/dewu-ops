@@ -5,6 +5,7 @@ import History from '@/views/History.vue';
 import Settings from '@/views/Settings.vue';
 import Login from '@/views/Login.vue';
 import Register from '@/views/Register.vue';
+import Admin from '@/views/Admin.vue';
 
 const routes = [
   {
@@ -36,6 +37,11 @@ const routes = [
     name: 'Settings',
     component: Settings,
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: Admin,
   },
 ];
 
