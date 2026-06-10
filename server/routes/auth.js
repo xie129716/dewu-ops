@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', authMiddleware, (req, res) => {
   const user = getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-  res.json(user);
+  res.json({ id: user.id, username: user.username, points: user.points || 0, isAdmin: !!user.is_admin, created_at: user.created_at });
 });
 
 module.exports = router;

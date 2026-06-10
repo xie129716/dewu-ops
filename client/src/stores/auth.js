@@ -40,7 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
     applyToken();
     try {
       const data = await api.get('/auth/me');
-      user.value = { ...data, points: data.points || 0 };
+      user.value = { id: data.id, username: data.username, points: data.points || 0, isAdmin: !!data.isAdmin };
     } catch (e) {
       logout();
     }
