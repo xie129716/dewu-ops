@@ -9,8 +9,8 @@
 
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="form-group">
-          <label>用户名 / 手机号</label>
-          <input v-model="account" class="input" placeholder="输入用户名或手机号" autocomplete="username" />
+          <label>用户名</label>
+          <input v-model="username" class="input" placeholder="输入用户名" autocomplete="username" />
         </div>
         <div class="form-group">
           <label>密码</label>
@@ -39,25 +39,20 @@ import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const auth = useAuthStore();
 
-const account = ref('');
+const username = ref('');
 const password = ref('');
 const error = ref('');
 const loading = ref(false);
 
 async function handleLogin() {
   error.value = '';
-  if (!account.value || !password.value) {
-    error.value = '请填写账号和密码';
+  if (!username.value || !password.value) {
+    error.value = '请填写用户名和密码';
     return;
   }
   loading.value = true;
   try {
-    // Auto-detect: phone number or username
-    const isPhone = /^1[3-9]\d{9}$/.test(account.value);
-    const payload = isPhone
-      ? { phone: account.value, password: password.value }
-      : { username: account.value, password: password.value };
-    await auth.login(payload);
+    await auth.login({ username: username.value, password: password.value });
     router.push('/');
   } catch (e) {
     error.value = e.message;
@@ -69,13 +64,12 @@ async function handleLogin() {
 
 <style scoped>
 .auth-page {
-  min-height: calc(100vh - 60px);
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
 }
-
 .auth-card {
   background: var(--dewu-card);
   border: 1px solid var(--dewu-border);
@@ -84,36 +78,13 @@ async function handleLogin() {
   width: 100%;
   max-width: 400px;
 }
-
-.auth-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
+.auth-header { text-align: center; margin-bottom: 32px; }
 .auth-icon { font-size: 48px; }
-
-.auth-header h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  margin: 12px 0 4px;
-}
-
-.auth-header p {
-  color: var(--dewu-text-muted);
-  font-size: 14px;
-}
-
+.auth-header h1 { font-size: 22px; font-weight: 700; color: #fff; margin: 12px 0 4px; }
+.auth-header p { color: var(--dewu-text-muted); font-size: 14px; }
 .auth-form { display: flex; flex-direction: column; gap: 16px; }
-
 .form-group { display: flex; flex-direction: column; gap: 6px; }
-
-.form-group label {
-  font-size: 13px;
-  color: var(--dewu-text-secondary);
-  font-weight: 500;
-}
-
+.form-group label { font-size: 13px; color: var(--dewu-text-secondary); font-weight: 500; }
 .error-msg {
   color: var(--dewu-accent);
   font-size: 13px;
@@ -121,16 +92,8 @@ async function handleLogin() {
   background: rgba(255, 77, 79, 0.08);
   border-radius: 6px;
 }
-
 .full-width { width: 100%; }
-
-.auth-footer {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-  color: var(--dewu-text-muted);
-}
-
+.auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--dewu-text-muted); }
 .auth-footer a { color: var(--dewu-blue); text-decoration: none; }
 .auth-footer a:hover { text-decoration: underline; }
 </style>
