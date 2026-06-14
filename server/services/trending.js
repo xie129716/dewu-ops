@@ -23,10 +23,10 @@ function parseList(output) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
 
-    if (indent === 0 && trimmed.startsWith('- ')) {
+    if (indent <= 2 && trimmed.startsWith('- ')) {
       if (current) items.push(current);
       current = {};
-    } else if (current && indent >= 4 && trimmed.includes(': ')) {
+    } else if (current && indent >= 2 && trimmed.includes(': ')) {
       const idx = trimmed.indexOf(': ');
       const key = trimmed.slice(0, idx).trim();
       const value = trimmed.slice(idx + 2).trim();
