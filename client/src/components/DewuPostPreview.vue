@@ -178,12 +178,21 @@ const timeText = computed(() => {
 
 <style scoped>
 .dewu-post {
-  background: #111;
-  border-radius: 12px;
+  background: var(--dewu-card);
+  border-radius: var(--dewu-radius);
   overflow: hidden;
   max-width: 500px;
   margin: 0 auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--dewu-shadow-lg);
+  border: 1px solid var(--dewu-border);
+  position: relative;
+}
+/* Signature: subtle infrared accent bar at top */
+.dewu-post::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--dewu-accent), var(--dewu-gold), var(--dewu-blue));
 }
 
 /* --- Header --- */
@@ -198,7 +207,7 @@ const timeText = computed(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  background: linear-gradient(135deg, var(--dewu-accent), var(--dewu-gold));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -422,7 +431,7 @@ const timeText = computed(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  border-top: 1px solid #222;
+  border-top: 1px solid var(--dewu-border);
   gap: 4px;
 }
 

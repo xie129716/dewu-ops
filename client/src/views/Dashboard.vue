@@ -54,11 +54,12 @@
           <!-- Check-in -->
           <div class="checkin-section">
             <button
-              class="btn btn-accent btn-lg full-width"
+              class="btn btn-checkin btn-lg full-width"
+              :class="{ checked: checkedIn }"
               :disabled="checkedIn || checkingIn"
               @click="handleCheckin"
             >
-              {{ checkedIn ? '✅ 今日已签到 (+20)' : '🎁 每日签到 +20 积分' }}
+              {{ checkedIn ? '✅ 今日已签到 (+20)' : '🎁 每日签到 +20 ⭐' }}
             </button>
           </div>
 
@@ -394,6 +395,20 @@ onUnmounted(() => stopPolling());
 .full-width { width: 100%; }
 
 .checkin-section { margin-bottom: 16px; }
+
+.btn-checkin {
+  background: linear-gradient(135deg, var(--dewu-gold), #F5D580);
+  color: var(--dewu-base);
+  font-weight: 700;
+}
+.btn-checkin:hover:not(:disabled) {
+  box-shadow: 0 4px 20px var(--dewu-gold-glow);
+  transform: translateY(-1px);
+}
+.btn-checkin.checked {
+  background: var(--dewu-border);
+  color: var(--dewu-text-muted);
+}
 
 .cost-tag {
   display: inline-block;

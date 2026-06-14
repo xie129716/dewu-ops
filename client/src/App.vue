@@ -48,8 +48,8 @@ function handleLogout() {
   justify-content: space-between;
   padding: 0 32px;
   height: 60px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #2a2a2a;
+  background: var(--dewu-surface);
+  border-bottom: 1px solid var(--dewu-border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -83,8 +83,8 @@ function handleLogout() {
 }
 
 .points-badge {
-  background: linear-gradient(135deg, #fa8c16, #ffc53d);
-  color: #000;
+  background: linear-gradient(135deg, var(--dewu-gold), #F5D580);
+  color: var(--dewu-base);
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 13px;

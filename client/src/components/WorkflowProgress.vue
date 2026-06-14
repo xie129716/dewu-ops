@@ -74,9 +74,9 @@ const steps = [
 }
 
 .step--active .step-indicator {
-  border-color: #fff;
-  color: #fff;
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+  border-color: var(--dewu-accent);
+  color: var(--dewu-accent);
+  box-shadow: 0 0 12px var(--dewu-accent-glow);
   animation: pulse 1.5s infinite;
 }
 
@@ -93,8 +93,8 @@ const steps = [
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); }
-  50% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.3); }
+  0%, 100% { box-shadow: 0 0 4px var(--dewu-accent-glow); }
+  50% { box-shadow: 0 0 16px var(--dewu-accent-glow); }
 }
 
 .step-check, .step-cross {
