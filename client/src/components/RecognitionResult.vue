@@ -11,13 +11,12 @@
       等待商品识别...
     </div>
 
-    <div v-if="loading" class="loading-state">
-      <div class="skeleton" style="height:20px;width:60%;margin-bottom:12px"></div>
-      <div class="skeleton" style="height:16px;width:80%;margin-bottom:8px"></div>
-      <div class="skeleton" style="height:16px;width:40%"></div>
+    <div v-if="loading || data?.streaming" class="loading-state">
+      <div class="streaming-spinner"></div>
+      <p>AI 正在识别商品...</p>
     </div>
 
-    <div v-if="data && !loading" class="recog-content" :class="{ streaming: data.streaming }">
+    <div v-if="data && !data.streaming && !loading" class="recog-content">
       <div class="recog-field">
         <span class="field-label">品牌</span>
         <span class="field-value brand">{{ data.brand }}</span>
@@ -126,14 +125,13 @@ const confidenceLabel = computed(() => {
   margin-top: 8px;
 }
 
-.recog-content.streaming .field-value {
-  position: relative;
-}
-.recog-content.streaming .field-value::after {
-  content: '▊';
-  color: var(--dewu-blue);
-  animation: blink 0.8s infinite;
-  margin-left: 2px;
+.streaming-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #222;
+  border-top-color: var(--dewu-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
 }
 /* blink keyframes defined in dewu-theme.css */
 </style>

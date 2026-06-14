@@ -64,19 +64,16 @@ export const useWorkflowStore = defineStore('workflow', () => {
     processing.value = true;
     error.value = null;
     currentStep.value = 1;
-    // Init streaming state
+    // Show loading state during streaming
     recognition.value = { brand: '', productName: '', category: '', description: '', confidence: '', streaming: true };
 
     try {
       let rawText = '';
       await consumeSSE('/recognize/stream', { imageUrl: uploadedImage.value.imageUrl }, (chunk) => {
         rawText = chunk.fullText;
-        // Try partial parse for live update
-        const parsed = tryParseRecognition(rawText);
-        recognition.value = { ...parsed, streaming: true, rawResponse: rawText };
       });
 
-      // Final parse
+      // Parse complete result
       const final = tryParseRecognition(rawText);
       recognition.value = { ...final, streaming: false, rawResponse: rawText };
       currentStep.value = 2;
@@ -117,8 +114,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
       }, (chunk) => {
         if (chunk.done) return;
         rawText = chunk.fullText;
-        const parsed = tryParseCopy(rawText);
-        copy.value = { ...parsed, streaming: true };
       });
 
       const final = tryParseCopy(rawText);

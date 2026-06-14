@@ -9,14 +9,12 @@
       等待文案生成...
     </div>
 
-    <div v-if="loading" class="loading-state">
-      <div class="skeleton" style="height:18px;width:50%;margin-bottom:12px"></div>
-      <div class="skeleton" style="height:14px;width:100%;margin-bottom:6px"></div>
-      <div class="skeleton" style="height:14px;width:100%;margin-bottom:6px"></div>
-      <div class="skeleton" style="height:14px;width:60%"></div>
+    <div v-if="loading || data?.streaming" class="loading-state">
+      <div class="streaming-spinner"></div>
+      <p>AI 正在生成文案...</p>
     </div>
 
-    <div v-if="data && !loading" class="copy-content" :class="{ streaming: data.streaming }">
+    <div v-if="data && !data.streaming && !loading" class="copy-content">
       <h4 class="copy-title">{{ data.title }}</h4>
       <div class="copy-body" :class="{ expanded }" @click="expanded = !expanded">
         <p>{{ data.content }}</p>
@@ -121,10 +119,12 @@ const expanded = ref(false);
   margin-top: 8px;
 }
 
-.copy-content.streaming .copy-body::after {
-  content: '▊';
-  color: var(--dewu-blue);
-  animation: blink 0.8s infinite;
-  margin-left: 2px;
+.streaming-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #222;
+  border-top-color: var(--dewu-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
 }
 </style>
