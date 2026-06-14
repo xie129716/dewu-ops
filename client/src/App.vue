@@ -12,9 +12,6 @@
         <router-link to="/history" class="nav-link">
           <span class="nav-icon">📁</span> 历史记录
         </router-link>
-        <router-link to="/trending" class="nav-link">
-          <span class="nav-icon">🔥</span> 爆款分析
-        </router-link>
         <router-link to="/settings" class="nav-link">
           <span class="nav-icon">⚙️</span> 设置
         </router-link>

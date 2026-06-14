@@ -6,7 +6,6 @@ import Settings from '@/views/Settings.vue';
 import Login from '@/views/Login.vue';
 import Register from '@/views/Register.vue';
 import Admin from '@/views/Admin.vue';
-import Trending from '@/views/Trending.vue';
 
 const routes = [
   {
@@ -37,12 +36,6 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: Settings,
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/trending',
-    name: 'Trending',
-    component: Trending,
     meta: { requiresAuth: true },
   },
   {

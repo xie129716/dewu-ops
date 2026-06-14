@@ -13,7 +13,6 @@ const workflowRoutes = require('./routes/workflow');
 const historyRoutes = require('./routes/history');
 const pointsRoutes = require('./routes/points');
 const adminRoutes = require('./routes/admin');
-const trendingRoutes = require('./routes/trending');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,7 +40,6 @@ app.use('/api/workflow', workflowRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/trending', trendingRoutes);
 
 // --- Production: serve built frontend ---
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
