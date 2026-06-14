@@ -37,38 +37,10 @@ function imageToBase64(filePath) {
  * @returns {object} - { brand, productName, category, description, rawResponse }
  */
 async function recognizeProduct(imagePath, userId) {
-  const client = createClient(userId);
-
-  const systemPrompt = `你是一个专业的潮流商品识别专家。请仔细分析图片中的商品，识别出商品的品牌、具体型号/款式、品类等信息。
-
-请严格按照以下JSON格式返回结果（不要包含任何其他文字）：
-{
-  "brand": "品牌名称",
-  "productName": "具体商品型号/名称",
-  "category": "品类（如：运动鞋、板鞋、手提包、双肩包等）",
-  "description": "商品特征的简短描述（颜色、材质、标志性元素等）",
-  "confidence": "high/medium/low"
-}
-
-如果无法准确识别，请返回你最好的猜测，并在confidence字段标注为low。`;
-
-  // Convert local file path to base64 data URL if not already a data URL
-  const imageDataUrl = imagePath.startsWith('data:')
-    ? imagePath
-    : imageToBase64(imagePath);
-
-  const completion = await client.chat.completions.create({
+  const imageDataUrl = imagePath.startsWith('data:') ? imagePath : imageToBase64(imagePath);
+  const completion = await createClient(userId).chat.completions.create({
     model: 'qwen-vl-max',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: [
-          { type: 'image_url', image_url: { url: imageDataUrl } },
-          { type: 'text', text: '请识别这张图片中的商品信息。' },
-        ],
-      },
-    ],
+    messages: buildMessages(imageDataUrl),
   });
 
   const rawContent = completion.choices[0].message.content;
@@ -101,10 +73,7 @@ async function recognizeProduct(imagePath, userId) {
   };
 }
 
-async function recognizeProductStream(imagePath) {
-  const client = createClient();
-
-  const systemPrompt = `你是一个专业的潮流商品识别专家。请仔细分析图片中的商品，识别出商品的品牌、具体型号/款式、品类等信息。
+const RECOGNITION_PROMPT = `你是一个专业的潮流商品识别专家。请仔细分析图片中的商品，识别出商品的品牌、具体型号/款式、品类等信息。
 
 请严格按照以下JSON格式返回结果（不要包含任何其他文字）：
 {
@@ -117,17 +86,21 @@ async function recognizeProductStream(imagePath) {
 
 如果无法准确识别，请返回你最好的猜测，并在confidence字段标注为low。`;
 
-  const imageDataUrl = imagePath.startsWith('data:') ? imagePath : imageToBase64(imagePath);
+function buildMessages(imageDataUrl) {
+  return [
+    { role: 'system', content: RECOGNITION_PROMPT },
+    { role: 'user', content: [
+      { type: 'image_url', image_url: { url: imageDataUrl } },
+      { type: 'text', text: '请识别这张图片中的商品信息。' },
+    ]},
+  ];
+}
 
-  return client.chat.completions.create({
+async function recognizeProductStream(imagePath) {
+  const imageDataUrl = imagePath.startsWith('data:') ? imagePath : imageToBase64(imagePath);
+  return createClient().chat.completions.create({
     model: 'qwen-vl-max',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: [
-        { type: 'image_url', image_url: { url: imageDataUrl } },
-        { type: 'text', text: '请识别这张图片中的商品信息。' },
-      ]},
-    ],
+    messages: buildMessages(imageDataUrl),
     stream: true,
   });
 }

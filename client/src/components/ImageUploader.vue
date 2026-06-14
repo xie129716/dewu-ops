@@ -223,9 +223,7 @@ function formatSize(bytes) {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+/* spin keyframes defined in dewu-theme.css */
 
 .upload-text {
   font-size: 16px;

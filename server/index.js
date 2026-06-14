@@ -69,11 +69,9 @@ KEYS.forEach(k => {
   }
 });
 
-// Create admin account on first run
-require('./services/auth').createAdminIfMissing();
-
 // Start server
 app.listen(PORT, () => {
+  require('./services/auth').createAdminIfMissing();
   console.log(`\n🚀 得物运营系统后端已启动`);
   console.log(`📍 地址: http://localhost:${PORT}`);
   console.log(`📋 API: http://localhost:${PORT}/api`);

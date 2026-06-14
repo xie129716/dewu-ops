@@ -288,6 +288,10 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* Shared animations (used by multiple components) */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
 /* --- Responsive --- */
 @media (max-width: 1024px) {
   .grid-3 { grid-template-columns: repeat(2, 1fr); }

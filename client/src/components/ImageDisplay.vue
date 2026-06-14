@@ -78,10 +78,6 @@ const statusText = computed(() => {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .image-grid {
   display: flex;
   flex-direction: column;

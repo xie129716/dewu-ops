@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import api from '@/api';
+import { consumeSSE } from '@/utils/sse';
+import { parseJSON } from '@/utils/parse';
 
 function pickBackground() {
   const backgrounds = [
@@ -57,52 +59,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
-  // Helper: consume SSE stream
-  async function consumeSSE(url, body, onChunk) {
-    const token = localStorage.getItem('dewu_token');
-    const base = import.meta.env.VITE_API_BASE || '/api';
-    const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
-
-    const resp = await fetch(fullUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: resp.statusText }));
-      throw new Error(err.error || '请求失败');
-    }
-
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.error) throw new Error(parsed.error);
-            onChunk(parsed);
-          } catch (e) {
-            if (e.message !== 'Unexpected end of JSON input') throw e;
-          }
-        }
-      }
-    }
-  }
-
   async function recognizeProduct() {
     if (!uploadedImage.value) throw new Error('请先上传图片');
     processing.value = true;
@@ -134,22 +90,14 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   function tryParseRecognition(text) {
-    try {
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-      const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
-      // Try to fix truncated JSON
-      const fixed = jsonStr.replace(/,\s*([}\]])/g, '$1');
-      const parsed = JSON.parse(fixed);
-      return {
-        brand: parsed.brand || '',
-        productName: parsed.productName || '',
-        category: parsed.category || '',
-        description: parsed.description || '',
-        confidence: parsed.confidence || '',
-      };
-    } catch (e) {
-      return { brand: '', productName: '', category: '', description: '', confidence: '' };
-    }
+    const parsed = parseJSON(text);
+    return parsed ? {
+      brand: parsed.brand || '',
+      productName: parsed.productName || '',
+      category: parsed.category || '',
+      description: parsed.description || '',
+      confidence: parsed.confidence || '',
+    } : { brand: '', productName: '', category: '', description: '', confidence: '' };
   }
 
   async function generateCopy(style) {
@@ -186,19 +134,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   function tryParseCopy(text) {
-    try {
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-      const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
-      const parsed = JSON.parse(jsonStr);
-      return {
-        title: parsed.title || '',
-        content: parsed.content || '',
-        tags: parsed.tags || [],
-        hashtags: parsed.hashtags || [],
-      };
-    } catch (e) {
-      return { title: '', content: text, tags: [], hashtags: [] };
-    }
+    const parsed = parseJSON(text);
+    return parsed ? {
+      title: parsed.title || '',
+      content: parsed.content || '',
+      tags: parsed.tags || [],
+      hashtags: parsed.hashtags || [],
+    } : { title: '', content: text, tags: [], hashtags: [] };
   }
 
   async function generateImage(size) {

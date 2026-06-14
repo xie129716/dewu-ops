@@ -2,13 +2,11 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { getDB, getSystemConfig, setSystemConfig } = require('../services/storage');
+const { hashPassword } = require('../services/auth');
 
 // All routes require admin
 router.use(authMiddleware);
-router.use((req, res, next) => {
-  if (!req.user.isAdmin) return res.status(403).json({ error: '仅管理员可访问' });
-  next();
-});
+router.use(authMiddleware.requireAdmin);
 
 // ---- API Keys ----
 router.get('/apikeys', (req, res) => {
@@ -87,8 +85,7 @@ router.patch('/users/:id', (req, res) => {
       db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
     }
     if (password) {
-      const bcrypt = require('bcryptjs');
-      const hash = bcrypt.hashSync(password, 10);
+      const hash = await hashPassword(password);
       db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, id);
     }
     res.json({ success: true, message: '更新成功' });
@@ -101,11 +98,14 @@ router.patch('/users/:id', (req, res) => {
 router.get('/stats', (req, res) => {
   try {
     const db = getDB();
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const historyCount = db.prepare('SELECT COUNT(*) as count FROM history').get().count;
-    const totalPoints = db.prepare('SELECT SUM(points) as total FROM users').get().total || 0;
-    const todayCheckins = db.prepare("SELECT COUNT(*) as count FROM checkins WHERE check_date = date('now')").get().count;
-    res.json({ userCount, historyCount, totalPoints, todayCheckins });
+    const row = db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM users) as userCount,
+        (SELECT COUNT(*) FROM history) as historyCount,
+        (SELECT COALESCE(SUM(points),0) FROM users) as totalPoints,
+        (SELECT COUNT(*) FROM checkins WHERE check_date = date('now')) as todayCheckins
+    `).get();
+    res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

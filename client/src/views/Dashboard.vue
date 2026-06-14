@@ -18,7 +18,7 @@
       <div class="grid-left">
         <ImageUploader
           :model-value="workflow.uploadedImage"
-          :uploading="uploading"
+          :uploading="workflow.processing"
           :error="uploadError"
           @upload="handleUpload"
         />
@@ -162,7 +162,6 @@ import { downloadImage } from '@/utils/download';
 const workflow = useWorkflowStore();
 const auth = useAuthStore();
 const uploadError = ref('');
-const uploading = ref(false);
 const checkedIn = ref(false);
 const checkingIn = ref(false);
 let pollTimer = null;
@@ -200,11 +199,9 @@ async function handleUpload(file) {
   if (!file) {
     workflow.reset();
     uploadError.value = '';
-    uploading.value = false;
     return;
   }
   uploadError.value = '';
-  uploading.value = true;
   try {
     await workflow.uploadImage(file);
     workflow.currentStep = 1;
@@ -212,8 +209,6 @@ async function handleUpload(file) {
   } catch (e) {
     uploadError.value = e.message;
     showToast(e.message, 'error');
-  } finally {
-    uploading.value = false;
   }
 }
 
@@ -420,9 +415,5 @@ onUnmounted(() => stopPolling());
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 8px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 </style>

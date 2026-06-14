@@ -36,5 +36,12 @@ function requirePoints(cost) {
 }
 
 authMiddleware.requirePoints = requirePoints;
+
+function requireAdmin(req, res, next) {
+  if (!req.user.isAdmin) return res.status(403).json({ error: '仅管理员可访问' });
+  next();
+}
+authMiddleware.requireAdmin = requireAdmin;
+
 module.exports = authMiddleware;
 

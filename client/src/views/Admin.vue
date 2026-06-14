@@ -65,7 +65,7 @@
       <div v-if="tab === 'users'" class="tab-content">
         <div class="card"><div class="card-header">
           <h3>用户列表 ({{ userTotal }})</h3>
-          <input v-model="userSearch" class="input" style="width:200px" placeholder="搜索用户名..." @input="loadUsers" />
+          <input v-model="userSearch" class="input" style="width:200px" placeholder="搜索用户名..." />
         </div>
           <table class="user-table" v-if="users.length">
             <thead><tr>
@@ -221,14 +221,18 @@ async function loadStats() {
 
 onMounted(async () => {
   if (!isAdmin.value) return;
-  await loadKeys();
-  await loadUsers();
-  await loadStats();
+  await Promise.all([loadKeys(), loadUsers(), loadStats()]);
 });
 
 watch(tab, (t) => {
   if (t === 'users') loadUsers();
   if (t === 'stats') loadStats();
+});
+
+let searchTimer;
+watch(userSearch, () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadUsers, 300);
 });
 </script>
 

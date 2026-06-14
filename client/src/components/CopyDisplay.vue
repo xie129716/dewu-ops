@@ -127,8 +127,4 @@ const expanded = ref(false);
   animation: blink 0.8s infinite;
   margin-left: 2px;
 }
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
 </style>
