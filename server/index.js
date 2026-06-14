@@ -25,6 +25,11 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Health check (before auth middleware)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -35,11 +40,6 @@ app.use('/api/workflow', workflowRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/admin', adminRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // --- Production: serve built frontend ---
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
