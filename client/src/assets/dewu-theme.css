@@ -1,6 +1,6 @@
 /* ============================================
-   得物运营系统 — Sneaker Colorway 主题
-   灵感: 球鞋材质与街头文化
+   得物运营系统 — Freemake-Inspired Design System
+   设计参考: modern dark SaaS tooling aesthetic
    ============================================ */
 
 /* --- Reset & Base --- */
@@ -13,139 +13,152 @@
 }
 
 :root {
-  /* Warm dark base — espresso leather, suede, cardboard */
-  --dewu-base: #1C1A18;
-  --dewu-surface: #252320;
-  --dewu-card: #2C2925;
-  --dewu-border: #3A3630;
-  --dewu-border-hover: #4A4640;
+  /* ——— Palette: cool neutral dark ——— */
+  --dewu-base: #0D0D10;
+  --dewu-surface: #131316;
+  --dewu-card: #18181D;
+  --dewu-card-hover: #1E1E24;
+  --dewu-border: #27272E;
+  --dewu-border-hover: #363640;
 
-  /* Text — cream midsole */
-  --dewu-text: #E8D5B7;
-  --dewu-text-secondary: #A89880;
-  --dewu-text-muted: #6B6055;
-  --dewu-heading: #F5EDE0;
+  /* ——— Text hierarchy ——— */
+  --dewu-text: #E4E4EA;
+  --dewu-text-secondary: #A0A0AB;
+  --dewu-text-muted: #6B6B78;
+  --dewu-heading: #F5F5F7;
 
-  /* Accents — iconic sneaker colorways */
-  --dewu-accent: #FF6B35;        /* Air Max 90 Infrared */
-  --dewu-accent-hover: #FF8C5A;
-  --dewu-accent-glow: rgba(255, 107, 53, 0.2);
-  --dewu-blue: #7EB8DA;          /* AJ1 University Blue */
-  --dewu-blue-glow: rgba(126, 184, 218, 0.15);
-  --dewu-green: #7BA989;         /* Pine Green */
-  --dewu-green-glow: rgba(123, 169, 137, 0.15);
-  --dewu-gold: #E8B85A;          /* University Gold */
-  --dewu-gold-glow: rgba(232, 184, 90, 0.15);
+  /* ——— Brand accents ——— */
+  --dewu-accent: #FF6B35;
+  --dewu-accent-hover: #FF8759;
+  --dewu-accent-glow: rgba(255, 107, 53, 0.18);
+  --dewu-blue: #7EB8DA;
+  --dewu-blue-glow: rgba(126, 184, 218, 0.12);
+  --dewu-green: #6FCF97;
+  --dewu-green-glow: rgba(111, 207, 151, 0.12);
+  --dewu-gold: #F2C94C;
+  --dewu-gold-glow: rgba(242, 201, 76, 0.12);
+  --dewu-orange: #F2994A;
 
-  /* Tag backgrounds */
-  --dewu-tag-bg: rgba(255, 107, 53, 0.12);
-  --dewu-tag-text: #FF8C5A;
+  /* ——— Tag backgrounds ——— */
+  --dewu-tag-bg: rgba(255, 107, 53, 0.1);
+  --dewu-tag-text: #FF8759;
 
-  /* Radii — softer, like box corners */
-  --dewu-radius: 14px;
-  --dewu-radius-sm: 10px;
+  /* ——— Radii — freemake-style: more subtle ——— */
+  --dewu-radius: 12px;
+  --dewu-radius-sm: 8px;
   --dewu-radius-xs: 6px;
+  --dewu-radius-full: 9999px;
 
-  /* Shadows — deeper, warmer */
-  --dewu-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-  --dewu-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --dewu-shadow-glow: 0 0 20px var(--dewu-accent-glow);
+  /* ——— Shadows — softer, height-based ——— */
+  --dewu-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --dewu-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --dewu-shadow-glow: 0 0 16px var(--dewu-accent-glow);
 
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  /* ——— Focus ring ——— */
+  --dewu-ring: 0 0 0 3px rgba(255, 107, 53, 0.25);
+
+  /* ——— Typography ——— */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: var(--dewu-text);
   background: var(--dewu-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   min-height: 100vh;
   background: var(--dewu-base);
   color: var(--dewu-text);
-  -webkit-font-smoothing: antialiased;
 }
 
-/* --- Scrollbar --- */
-::-webkit-scrollbar { width: 6px; }
+/* --- Scrollbar — subtle, minimal --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--dewu-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb {
+  background: var(--dewu-border);
+  border-radius: 3px;
+}
 ::-webkit-scrollbar-thumb:hover { background: var(--dewu-border-hover); }
 
 /* --- Common Layout --- */
 .page-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 32px 36px;
+  padding: 36px 40px;
 }
 
 .page-header {
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 
 .page-header h1 {
-  font-size: 26px;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 700;
   color: var(--dewu-heading);
   margin-bottom: 6px;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.02em;
 }
 
 .page-header p {
-  color: var(--dewu-text-secondary);
+  color: var(--dewu-text-muted);
   font-size: 14px;
   font-weight: 400;
 }
 
-/* --- Cards --- */
+/* --- Cards — freemake-style: clean, subtle --- */
 .card {
   background: var(--dewu-card);
   border: 1px solid var(--dewu-border);
   border-radius: var(--dewu-radius);
   padding: 24px;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {
   border-color: var(--dewu-border-hover);
-  box-shadow: var(--dewu-shadow);
+  background: var(--dewu-card-hover);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--dewu-border);
 }
 
 .card-header h3 {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dewu-heading);
-  letter-spacing: -0.2px;
+  letter-spacing: -0.01em;
 }
 
-/* --- Buttons --- */
+/* --- Buttons — modern, refined --- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 24px;
+  gap: 6px;
+  padding: 9px 20px;
   border: none;
   border-radius: var(--dewu-radius-sm);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
-  letter-spacing: 0.1px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  position: relative;
 }
 
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   transform: none !important;
 }
@@ -153,21 +166,24 @@ body {
 .btn-primary {
   background: var(--dewu-heading);
   color: var(--dewu-base);
+  font-weight: 600;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: #FFF;
-  box-shadow: 0 4px 16px rgba(245, 237, 224, 0.15);
+  box-shadow: 0 2px 8px rgba(245, 245, 247, 0.12);
   transform: translateY(-1px);
 }
 
 .btn-accent {
-  background: linear-gradient(135deg, var(--dewu-accent), #FF8555);
+  background: var(--dewu-accent);
   color: #FFF;
+  font-weight: 600;
 }
 
 .btn-accent:hover:not(:disabled) {
-  box-shadow: var(--dewu-shadow-glow);
+  background: var(--dewu-accent-hover);
+  box-shadow: 0 2px 12px var(--dewu-accent-glow);
   transform: translateY(-1px);
 }
 
@@ -180,13 +196,19 @@ body {
 .btn-ghost:hover:not(:disabled) {
   border-color: var(--dewu-border-hover);
   color: var(--dewu-text);
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.btn-sm { padding: 6px 14px; font-size: 13px; }
-.btn-lg { padding: 14px 32px; font-size: 16px; }
+.btn-sm { padding: 5px 12px; font-size: 13px; border-radius: var(--dewu-radius-xs); }
+.btn-lg { padding: 12px 28px; font-size: 15px; }
 
-/* --- Inputs --- */
+/* Freemake-style pill button */
+.btn-pill {
+  border-radius: var(--dewu-radius-full);
+  padding: 8px 22px;
+}
+
+/* --- Inputs — modern with ring focus --- */
 .input {
   width: 100%;
   padding: 10px 14px;
@@ -201,44 +223,78 @@ body {
 
 .input:focus {
   border-color: var(--dewu-accent);
-  box-shadow: 0 0 0 3px var(--dewu-accent-glow);
+  box-shadow: var(--dewu-ring);
 }
 
 .input::placeholder { color: var(--dewu-text-muted); }
 
-/* --- Tags --- */
+/* --- Tags, Badges, Pills — freemake-style --- */
 .tag {
   display: inline-flex;
   align-items: center;
   padding: 3px 10px;
   background: var(--dewu-tag-bg);
   color: var(--dewu-tag-text);
-  border-radius: var(--dewu-radius-xs);
+  border-radius: var(--dewu-radius-full);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-.tag-blue { background: var(--dewu-blue-glow); color: var(--dewu-blue); }
-.tag-green { background: var(--dewu-green-glow); color: var(--dewu-green); }
+.tag-blue {
+  background: var(--dewu-blue-glow);
+  color: var(--dewu-blue);
+}
+
+.tag-green {
+  background: var(--dewu-green-glow);
+  color: var(--dewu-green);
+}
+
+.tag-gold {
+  background: var(--dewu-gold-glow);
+  color: var(--dewu-gold);
+}
+
+/* Freemake-style "New" / "Beta" pill badge */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 10px;
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--dewu-accent);
+  border-radius: var(--dewu-radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
 
 /* --- Status Dots --- */
 .status-dot {
-  width: 8px; height: 8px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 .status-dot.active {
   background: var(--dewu-green);
-  box-shadow: 0 0 8px var(--dewu-green-glow);
+  box-shadow: 0 0 6px var(--dewu-green-glow);
 }
-.status-dot.inactive { background: #555; }
+.status-dot.inactive { background: var(--dewu-border-hover); }
 
 /* --- Skeleton Loading --- */
 .skeleton {
-  background: linear-gradient(90deg, var(--dewu-card) 25%, var(--dewu-border) 50%, var(--dewu-card) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--dewu-card) 25%,
+    var(--dewu-border) 50%,
+    var(--dewu-card) 75%
+  );
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
-  border-radius: var(--dewu-radius-xs);
+  border-radius: var(--dewu-radius-sm);
 }
 
 @keyframes skeleton-loading {
@@ -246,14 +302,23 @@ body {
   100% { background-position: -200% 0; }
 }
 
-/* --- Grid Layout --- */
+/* --- Stat Numbers — freemake tabular-nums style --- */
+.stat-number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--dewu-heading);
+  letter-spacing: -0.02em;
+}
+
+/* --- Grid Helpers --- */
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
 /* --- Toast --- */
 .toast {
   position: fixed;
-  top: 80px; right: 24px;
+  top: 80px;
+  right: 24px;
   padding: 14px 20px;
   border-radius: var(--dewu-radius-sm);
   font-size: 14px;
@@ -263,13 +328,13 @@ body {
 }
 
 .toast-success {
-  background: rgba(123, 169, 137, 0.12);
-  border: 1px solid rgba(123, 169, 137, 0.3);
+  background: rgba(111, 207, 151, 0.1);
+  border: 1px solid rgba(111, 207, 151, 0.3);
   color: var(--dewu-green);
 }
 
 .toast-error {
-  background: rgba(255, 107, 53, 0.12);
+  background: rgba(255, 107, 53, 0.1);
   border: 1px solid rgba(255, 107, 53, 0.3);
   color: var(--dewu-accent);
 }
@@ -279,7 +344,7 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* Shared animations */
+/* ——— Shared Keyframe Animations ——— */
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes card-in {
@@ -287,12 +352,19 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* Staggered card entrance */
 .card-enter { animation: card-in 0.4s ease both; }
 .card-enter:nth-child(1) { animation-delay: 0ms; }
-.card-enter:nth-child(2) { animation-delay: 80ms; }
-.card-enter:nth-child(3) { animation-delay: 160ms; }
-.card-enter:nth-child(4) { animation-delay: 240ms; }
+.card-enter:nth-child(2) { animation-delay: 60ms; }
+.card-enter:nth-child(3) { animation-delay: 120ms; }
+.card-enter:nth-child(4) { animation-delay: 180ms; }
+.card-enter:nth-child(5) { animation-delay: 240ms; }
+.card-enter:nth-child(6) { animation-delay: 300ms; }
 
 /* --- Responsive --- */
 @media (max-width: 1024px) {
@@ -301,6 +373,6 @@ body {
 }
 
 @media (max-width: 768px) {
-  .page-container { padding: 16px; }
+  .page-container { padding: 20px 16px; }
   .grid-3 { grid-template-columns: 1fr; }
 }

@@ -1,9 +1,10 @@
 <template>
   <div class="settings-page page-container">
     <div class="page-header">
-      <h1>⚙️ 系统状态</h1>
-      <p>AI 服务连接状态</p>
+      <h1>系统状态</h1>
+      <p>AI 服务连接状态检查</p>
     </div>
+
     <div class="settings-grid">
       <div class="card setting-card" v-for="s in services" :key="s.key">
         <div class="card-header">
@@ -43,10 +44,33 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-.setting-card .card-header { margin-bottom: 0; padding-bottom: 12px; }
-.setting-title { display: flex; align-items: center; gap: 12px; }
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.setting-card .card-header {
+  margin-bottom: 0;
+  padding-bottom: 14px;
+}
+
+.setting-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .setting-icon { font-size: 28px; }
-.setting-title h3 { font-size: 16px; }
-.setting-title p { font-size: 12px; color: var(--dewu-text-muted); margin-top: 2px; }
+
+.setting-title h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.setting-title p {
+  font-size: 12px;
+  color: var(--dewu-text-muted);
+  margin-top: 2px;
+}
 </style>

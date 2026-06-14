@@ -1,5 +1,8 @@
 <template>
   <div class="dewu-post">
+    <!-- Top accent bar — freemake-style gradient -->
+    <div class="post-accent"></div>
+
     <!-- Post Header -->
     <div class="post-header">
       <div class="user-avatar">
@@ -24,7 +27,7 @@
       <span v-for="tag in tags" :key="tag" class="post-tag">{{ tag }}</span>
     </div>
 
-    <!-- Image Carousel — only generated images -->
+    <!-- Image Carousel -->
     <div class="post-images" v-if="displayImages.length">
       <div class="carousel">
         <div
@@ -35,6 +38,8 @@
             <img :src="img" alt="生成商品图" />
           </div>
         </div>
+
+        <!-- Dots -->
         <div v-if="displayImages.length > 1" class="carousel-dots">
           <span
             v-for="(_, i) in displayImages"
@@ -44,9 +49,13 @@
             @click="currentImage = i"
           ></span>
         </div>
+
+        <!-- Counter -->
         <div v-if="displayImages.length > 1" class="carousel-counter">
           {{ currentImage + 1 }} / {{ displayImages.length }}
         </div>
+
+        <!-- Nav arrows -->
         <button
           v-if="displayImages.length > 1 && currentImage > 0"
           class="carousel-btn carousel-btn--left"
@@ -60,7 +69,7 @@
       </div>
     </div>
 
-    <!-- Placeholder when no generated images yet -->
+    <!-- Placeholder -->
     <div v-else class="post-images">
       <div class="image-placeholder">
         <div class="placeholder-icon">🖼️</div>
@@ -68,7 +77,7 @@
       </div>
     </div>
 
-    <!-- Product Name & Category -->
+    <!-- Product Info -->
     <div class="post-product-info">
       <div class="product-header">
         <span class="product-brand" v-if="brand">{{ brand }}</span>
@@ -121,7 +130,7 @@
       </button>
     </div>
 
-    <!-- Download Button -->
+    <!-- Download -->
     <div class="post-download" v-if="displayImages.length">
       <button
         class="btn btn-primary btn-sm"
@@ -129,7 +138,7 @@
         :key="'dl-' + i"
         @click="$emit('download', img, `dewu-generated-${i + 1}.png`)"
       >
-        💾 下载图片 {{ displayImages.length > 1 ? i + 1 : '' }}
+        💾 下载图片{{ displayImages.length > 1 ? ' ' + (i + 1) : '' }}
       </button>
     </div>
   </div>
@@ -183,19 +192,22 @@ const timeText = computed(() => {
   overflow: hidden;
   max-width: 500px;
   margin: 0 auto;
-  box-shadow: var(--dewu-shadow-lg);
   border: 1px solid var(--dewu-border);
   position: relative;
 }
-/* Signature: subtle infrared accent bar at top */
-.dewu-post::before {
-  content: '';
-  display: block;
+
+/* ——— Accent bar — freemake-inspired gradient stripe ——— */
+.post-accent {
   height: 3px;
-  background: linear-gradient(90deg, var(--dewu-accent), var(--dewu-gold), var(--dewu-blue));
+  background: linear-gradient(
+    90deg,
+    var(--dewu-accent),
+    var(--dewu-gold),
+    var(--dewu-blue)
+  );
 }
 
-/* --- Header --- */
+/* ——— Header ——— */
 .post-header {
   display: flex;
   align-items: center;
@@ -211,12 +223,13 @@ const timeText = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
+  flex-shrink: 0;
 }
 
-.user-info { flex: 1; }
+.user-info { flex: 1; min-width: 0; }
 
 .user-name-row {
   display: flex;
@@ -224,39 +237,58 @@ const timeText = computed(() => {
   gap: 4px;
 }
 
-.user-name { font-size: 14px; font-weight: 600; color: #fff; }
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dewu-heading);
+}
+
 .user-badge { font-size: 12px; }
 
-.post-meta { font-size: 11px; color: #888; margin-top: 1px; }
+.post-meta {
+  font-size: 11px;
+  color: var(--dewu-text-muted);
+  margin-top: 1px;
+}
+
 .meta-divider { margin: 0 4px; }
 
 .follow-btn {
   padding: 5px 14px;
-  border-radius: 16px;
-  border: 1px solid #444;
+  border-radius: var(--dewu-radius-full);
+  border: 1px solid var(--dewu-border);
   background: transparent;
-  color: #ccc;
+  color: var(--dewu-text-secondary);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
 }
-.follow-btn:hover { border-color: #fff; color: #fff; }
 
-/* --- Tags --- */
+.follow-btn:hover {
+  border-color: var(--dewu-border-hover);
+  color: var(--dewu-heading);
+}
+
+/* ——— Tags ——— */
 .post-tags {
   display: flex;
   gap: 6px;
   padding: 0 16px 12px;
+  flex-wrap: wrap;
 }
 
 .post-tag {
-  padding: 2px 8px;
-  background: rgba(255, 77, 79, 0.12);
-  color: #ff7875;
-  border-radius: 4px;
+  padding: 2px 10px;
+  background: rgba(255, 107, 53, 0.1);
+  color: var(--dewu-accent-hover);
+  border-radius: var(--dewu-radius-full);
   font-size: 11px;
+  font-weight: 500;
 }
 
-/* --- Images --- */
+/* ——— Images ——— */
 .post-images { position: relative; }
 
 .carousel {
@@ -291,115 +323,138 @@ const timeText = computed(() => {
 }
 
 .dot {
-  width: 6px; height: 6px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.35);
   cursor: pointer;
+  transition: background 0.2s;
 }
+
+.dot:hover { background: rgba(255, 255, 255, 0.6); }
 .dot--active { background: #fff; }
 
 .carousel-counter {
   position: absolute;
-  bottom: 12px; right: 12px;
-  background: rgba(0, 0, 0, 0.6);
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
   color: #fff;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--dewu-radius-full);
   font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .carousel-btn {
   position: absolute;
-  top: 50%; transform: translateY(-50%);
-  width: 36px; height: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
   color: #fff;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s;
 }
+
+.carousel-btn:hover { background: rgba(0, 0, 0, 0.7); }
 .carousel-btn--left { left: 8px; }
 .carousel-btn--right { right: 8px; }
 
-/* --- Placeholder --- */
+/* ——— Placeholder ——— */
 .image-placeholder {
   aspect-ratio: 1;
-  background: #1a1a1a;
+  background: #0a0a0e;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #555;
+  color: var(--dewu-text-muted);
 }
 
-.placeholder-icon { font-size: 48px; opacity: 0.3; }
+.placeholder-icon { font-size: 48px; opacity: 0.25; }
 .image-placeholder p { font-size: 14px; }
 
-/* --- Product Info --- */
+/* ——— Product Info ——— */
 .post-product-info {
-  padding: 14px 16px 0;
+  padding: 16px 16px 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
 }
 
-.product-header { flex: 1; }
+.product-header { flex: 1; min-width: 0; }
 
 .product-brand {
   font-size: 12px;
   color: var(--dewu-accent-hover);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 .product-name {
   display: block;
   font-size: 16px;
   font-weight: 700;
-  color: #fff;
+  color: var(--dewu-heading);
   margin-top: 2px;
+  letter-spacing: -0.01em;
 }
 
 .product-category {
   display: inline-block;
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 12px;
-  color: #888;
-  background: rgba(255,255,255,0.06);
-  padding: 2px 8px;
-  border-radius: 4px;
+  color: var(--dewu-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 10px;
+  border-radius: var(--dewu-radius-full);
+  font-weight: 500;
 }
 
-.product-price { text-align: right; }
+.product-price { text-align: right; flex-shrink: 0; }
 
-.price-label { font-size: 11px; color: #888; display: block; }
+.price-label {
+  font-size: 11px;
+  color: var(--dewu-text-muted);
+  display: block;
+}
 
 .price-value {
   font-size: 18px;
   font-weight: 700;
   color: var(--dewu-accent);
+  font-variant-numeric: tabular-nums;
 }
 
-/* --- Content --- */
-.post-content { padding: 12px 16px; }
+/* ——— Content ——— */
+.post-content { padding: 14px 16px; }
 
 .content-title {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
-  margin-bottom: 6px;
+  color: var(--dewu-heading);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
 }
 
 .content-body {
   font-size: 14px;
-  line-height: 1.7;
-  color: #bbb;
-  max-height: 60px;
+  line-height: 1.75;
+  color: var(--dewu-text-secondary);
+  max-height: 64px;
   overflow: hidden;
   transition: max-height 0.3s;
 }
@@ -410,29 +465,37 @@ const timeText = computed(() => {
   background: none;
   border: none;
   padding: 0;
-  color: #888;
+  color: var(--dewu-text-muted);
   font-size: 13px;
   cursor: pointer;
-  margin-top: 4px;
+  margin-top: 6px;
+  font-weight: 500;
+  transition: color 0.15s;
 }
 
-/* --- Hashtags --- */
+.content-expand:hover { color: var(--dewu-text-secondary); }
+
+/* ——— Hashtags ——— */
 .post-hashtags {
-  padding: 0 16px 12px;
+  padding: 0 16px 14px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
-.hashtag { color: #5b9bd5; font-size: 12px; }
+.hashtag {
+  color: var(--dewu-blue);
+  font-size: 12px;
+  font-weight: 500;
+}
 
-/* --- Actions --- */
+/* ——— Actions ——— */
 .post-actions {
   display: flex;
   align-items: center;
   padding: 12px 16px;
   border-top: 1px solid var(--dewu-border);
-  gap: 4px;
+  gap: 2px;
 }
 
 .action-btn {
@@ -442,28 +505,40 @@ const timeText = computed(() => {
   padding: 6px 12px;
   background: none;
   border: none;
-  color: #999;
+  color: var(--dewu-text-muted);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--dewu-radius-sm);
   transition: all 0.15s;
 }
-.action-btn:hover { background: rgba(255, 255, 255, 0.05); }
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--dewu-text-secondary);
+}
 
 .action-icon { font-size: 16px; }
-.action-num { font-size: 12px; }
+
+.action-num {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 
 .want-btn {
   margin-left: auto;
-  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  background: linear-gradient(135deg, var(--dewu-accent), #FF8759);
   color: #fff;
-  border-radius: 20px;
-  padding: 6px 16px;
+  border-radius: var(--dewu-radius-full);
+  padding: 6px 18px;
 }
-.want-btn:hover { background: linear-gradient(135deg, #ff7875, #ff4d4f); }
+
+.want-btn:hover {
+  background: linear-gradient(135deg, #FF8759, var(--dewu-accent));
+  color: #fff;
+}
 
 .action-label { font-size: 13px; font-weight: 600; }
 
-/* --- Download --- */
+/* ——— Download ——— */
 .post-download {
   display: flex;
   gap: 8px;

@@ -2,23 +2,29 @@
   <div id="app">
     <nav v-if="auth.isLoggedIn" class="app-nav">
       <div class="nav-brand">
-        <span class="brand-icon">👟</span>
-        <span class="brand-text">得物运营系统</span>
+        <router-link to="/" class="brand-link">
+          <span class="brand-icon">👟</span>
+          <span class="brand-text">得物运营</span>
+        </router-link>
+        <span class="badge-pill">AI</span>
       </div>
       <div class="nav-links">
         <router-link to="/" class="nav-link">
-          <span class="nav-icon">📋</span> 工作台
+          <span>📋</span>
+          <span>工作台</span>
         </router-link>
         <router-link to="/history" class="nav-link">
-          <span class="nav-icon">📁</span> 历史记录
+          <span>📁</span>
+          <span>历史记录</span>
         </router-link>
         <router-link to="/settings" class="nav-link">
-          <span class="nav-icon">⚙️</span> 设置
+          <span>⚙️</span>
+          <span>设置</span>
         </router-link>
       </div>
       <div class="nav-user">
-        <span class="points-badge">⭐ {{ auth.points }} 积分</span>
-        <span class="user-greeting">👤 {{ auth.user?.username }}</span>
+        <span class="points-badge">⭐ {{ auth.points }}</span>
+        <span class="user-greeting">{{ auth.user?.username }}</span>
         <button class="btn btn-ghost btn-sm" @click="handleLogout">退出</button>
       </div>
     </nav>
@@ -46,36 +52,81 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
-  height: 60px;
-  background: var(--dewu-surface);
+  padding: 0 28px;
+  height: 56px;
+  background: color-mix(in srgb, var(--dewu-surface) 90%, transparent);
   border-bottom: 1px solid var(--dewu-border);
   position: sticky;
   top: 0;
   z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.nav-brand { display: flex; align-items: center; gap: 10px; }
-.brand-icon { font-size: 28px; }
-.brand-text { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+/* ——— Brand ——— */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-.nav-links { display: flex; gap: 8px; }
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-icon { font-size: 24px; }
+
+.brand-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--dewu-heading);
+  letter-spacing: -0.02em;
+}
+
+/* Freemake-style "AI" pill */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--dewu-accent);
+  border-radius: var(--dewu-radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ——— Nav Links ——— */
+.nav-links { display: flex; gap: 2px; }
 
 .nav-link {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
-  border-radius: 8px;
-  color: #999;
+  padding: 7px 16px;
+  border-radius: var(--dewu-radius-sm);
+  color: var(--dewu-text-muted);
   text-decoration: none;
   font-size: 14px;
+  font-weight: 500;
   transition: all 0.2s;
 }
-.nav-link:hover { color: #fff; background: rgba(255,255,255,0.08); }
-.nav-link.router-link-active { color: #fff; background: rgba(255,255,255,0.12); }
-.nav-icon { font-size: 16px; }
 
+.nav-link:hover {
+  color: var(--dewu-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-link.router-link-active {
+  color: var(--dewu-heading);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ——— User Section ——— */
 .nav-user {
   display: flex;
   align-items: center;
@@ -83,15 +134,27 @@ function handleLogout() {
 }
 
 .points-badge {
-  background: linear-gradient(135deg, var(--dewu-gold), #F5D580);
+  background: linear-gradient(135deg, var(--dewu-gold), #E8C547);
   color: var(--dewu-base);
   padding: 4px 12px;
-  border-radius: 20px;
+  border-radius: var(--dewu-radius-full);
   font-size: 13px;
   font-weight: 700;
 }
-.user-greeting { color: #ccc; font-size: 14px; }
 
-.app-main { min-height: calc(100vh - 60px); background: #0f0f0f; }
-.app-main.no-nav { min-height: 100vh; }
+.user-greeting {
+  color: var(--dewu-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ——— Main ——— */
+.app-main {
+  min-height: calc(100vh - 56px);
+  background: var(--dewu-base);
+}
+
+.app-main.no-nav {
+  min-height: 100vh;
+}
 </style>

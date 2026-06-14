@@ -1,12 +1,12 @@
 <template>
   <div class="history-row card" @click="$emit('preview', record)">
-    <!-- Left: Original image thumbnail -->
+    <!-- Left: Thumbnail -->
     <div class="row-thumb">
       <img v-if="record.original_image" :src="record.original_image" alt="原图" />
       <div v-else class="thumb-placeholder">📷</div>
     </div>
 
-    <!-- Center: Product info -->
+    <!-- Center: Info -->
     <div class="row-info">
       <div class="info-brand" v-if="record.recognition_result?.brand">
         {{ record.recognition_result.brand }}
@@ -23,7 +23,7 @@
       <div class="info-time">{{ formatTime(record.created_at) }}</div>
     </div>
 
-    <!-- Right: Preview button + actions -->
+    <!-- Right: Actions -->
     <div class="row-actions" @click.stop>
       <button class="btn btn-accent btn-sm" @click="$emit('preview', record)">
         👁️ 预览
@@ -75,24 +75,25 @@ function formatTime(dateStr) {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 16px 20px;
+  padding: 18px 24px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: all 0.2s;
 }
 
 .history-row:hover {
-  border-color: #444;
-  background: rgba(255,255,255,0.02);
+  border-color: var(--dewu-border-hover);
+  background: var(--dewu-card-hover);
 }
 
-/* --- Thumbnail --- */
+/* ——— Thumbnail ——— */
 .row-thumb {
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--dewu-radius-sm);
   overflow: hidden;
   flex-shrink: 0;
   background: #000;
+  border: 1px solid var(--dewu-border);
 }
 
 .row-thumb img {
@@ -107,78 +108,79 @@ function formatTime(dateStr) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  opacity: 0.3;
+  font-size: 28px;
+  opacity: 0.25;
 }
 
-/* --- Info --- */
-.row-info {
-  flex: 1;
-  min-width: 0;
-}
+/* ——— Info ——— */
+.row-info { flex: 1; min-width: 0; }
 
 .info-brand {
   font-size: 12px;
   color: var(--dewu-accent-hover);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
   margin-bottom: 2px;
 }
 
 .info-name {
   font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 600;
+  color: var(--dewu-heading);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 .info-meta {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
   align-items: center;
 }
 
 .meta-tag {
   font-size: 12px;
-  color: #888;
-  background: rgba(255,255,255,0.06);
-  padding: 2px 8px;
-  border-radius: 4px;
+  color: var(--dewu-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 10px;
+  border-radius: var(--dewu-radius-full);
+  font-weight: 500;
 }
 
 .status-tag {
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.06);
-  color: #888;
+  padding: 2px 10px;
+  border-radius: var(--dewu-radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--dewu-text-muted);
+  font-weight: 500;
 }
 
 .status-tag.tag-green {
-  background: rgba(82, 196, 26, 0.1);
+  background: rgba(111, 207, 151, 0.1);
   color: var(--dewu-green);
 }
 
 .status-tag.tag-blue {
-  background: rgba(24, 144, 255, 0.1);
+  background: rgba(126, 184, 218, 0.1);
   color: var(--dewu-blue);
 }
 
 .status-tag.tag-red {
-  background: rgba(255, 77, 79, 0.1);
+  background: rgba(255, 107, 53, 0.1);
   color: var(--dewu-accent);
 }
 
 .info-time {
   font-size: 12px;
-  color: #555;
-  margin-top: 4px;
+  color: var(--dewu-text-muted);
+  margin-top: 6px;
 }
 
-/* --- Actions --- */
+/* ——— Actions ——— */
 .row-actions {
   display: flex;
   flex-direction: column;

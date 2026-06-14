@@ -7,12 +7,16 @@
 
     <div
       class="drop-zone"
-      :class="{ 'drop-zone--active': dragging, 'drop-zone--has-image': imageUrl, 'drop-zone--uploading': uploading }"
+      :class="{
+        'drop-zone--active': dragging,
+        'drop-zone--has-image': imageUrl,
+        'drop-zone--uploading': uploading,
+      }"
       @dragover.prevent="dragging = true"
       @dragleave.prevent="dragging = false"
       @drop.prevent="handleDrop"
     >
-      <!-- Uploading state -->
+      <!-- Uploading -->
       <template v-if="uploading">
         <div class="upload-animation">
           <div class="upload-spinner"></div>
@@ -23,6 +27,7 @@
         </div>
       </template>
 
+      <!-- Empty state -->
       <template v-else-if="!imageUrl">
         <div class="drop-icon">📤</div>
         <p class="drop-text">拖拽图片到此处，或点击上传</p>
@@ -34,15 +39,18 @@
           class="file-input"
           @change="handleFileChange"
         />
-        <button class="btn btn-ghost btn-sm" @click="$refs.fileInput.click()">
-          选择文件
-        </button>
+        <button class="btn btn-ghost btn-sm" @click="$refs.fileInput.click()">选择文件</button>
       </template>
 
+      <!-- Has image -->
       <template v-else>
         <img :src="imageUrl" class="preview-image" alt="上传预览" />
         <div class="image-overlay">
-          <button class="btn btn-sm" style="background:rgba(0,0,0,0.6);color:#fff" @click="clearImage">
+          <button
+            class="btn btn-sm"
+            style="background: rgba(0,0,0,0.6); color: #fff"
+            @click="clearImage"
+          >
             重新上传
           </button>
         </div>
@@ -112,12 +120,11 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
-.uploader-card {
-  min-width: 320px;
-}
+.uploader-card { min-width: 320px; }
 
+/* ——— Drop Zone ——— */
 .drop-zone {
-  border: 2px dashed #333;
+  border: 2px dashed var(--dewu-border);
   border-radius: var(--dewu-radius);
   padding: 40px 20px;
   text-align: center;
@@ -134,8 +141,8 @@ function formatSize(bytes) {
 
 .drop-zone:hover,
 .drop-zone--active {
-  border-color: #666;
-  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--dewu-border-hover);
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .drop-zone--has-image {
@@ -144,24 +151,13 @@ function formatSize(bytes) {
   overflow: hidden;
 }
 
-.drop-icon {
-  font-size: 48px;
-  opacity: 0.4;
-}
+.drop-zone--has-image:hover { border-color: var(--dewu-border-hover); }
 
-.drop-text {
-  font-size: 16px;
-  color: var(--dewu-text-secondary);
-}
+.drop-icon { font-size: 48px; opacity: 0.35; }
+.drop-text { font-size: 16px; color: var(--dewu-text-secondary); font-weight: 500; }
+.drop-hint { font-size: 12px; color: var(--dewu-text-muted); }
 
-.drop-hint {
-  font-size: 12px;
-  color: var(--dewu-text-muted);
-}
-
-.file-input {
-  display: none;
-}
+.file-input { display: none; }
 
 .preview-image {
   width: 100%;
@@ -175,7 +171,7 @@ function formatSize(bytes) {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 12px;
+  padding: 16px;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
   display: flex;
   justify-content: center;
@@ -183,14 +179,12 @@ function formatSize(bytes) {
   transition: opacity 0.2s;
 }
 
-.drop-zone:hover .image-overlay {
-  opacity: 1;
-}
+.drop-zone:hover .image-overlay { opacity: 1; }
 
 .image-info {
   display: flex;
   justify-content: space-between;
-  margin-top: 12px;
+  margin-top: 14px;
   font-size: 13px;
   color: var(--dewu-text-secondary);
 }
@@ -201,10 +195,10 @@ function formatSize(bytes) {
   font-size: 13px;
 }
 
-/* Upload animation */
+/* ——— Upload Animation ——— */
 .drop-zone--uploading {
   border-color: var(--dewu-blue) !important;
-  background: rgba(24, 144, 255, 0.03) !important;
+  background: rgba(126, 184, 218, 0.03) !important;
 }
 
 .upload-animation {
@@ -217,13 +211,11 @@ function formatSize(bytes) {
 .upload-spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid #222;
+  border: 4px solid var(--dewu-border);
   border-top-color: var(--dewu-blue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
-
-/* spin keyframes defined in dewu-theme.css */
 
 .upload-text {
   font-size: 16px;
@@ -240,7 +232,7 @@ function formatSize(bytes) {
 .progress-bar-wrap {
   width: 60%;
   height: 4px;
-  background: #222;
+  background: var(--dewu-border);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -248,7 +240,7 @@ function formatSize(bytes) {
 .progress-bar-fill {
   height: 100%;
   width: 30%;
-  background: linear-gradient(90deg, var(--dewu-blue), #69c0ff);
+  background: linear-gradient(90deg, var(--dewu-blue), #9FD4EE);
   border-radius: 2px;
   animation: progress-indeterminate 1.2s ease-in-out infinite;
 }

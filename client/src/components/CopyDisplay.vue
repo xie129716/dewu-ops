@@ -5,9 +5,7 @@
       <span v-if="data" class="tag tag-blue">已生成</span>
     </div>
 
-    <div v-if="!data && !loading" class="empty-state">
-      等待文案生成...
-    </div>
+    <div v-if="!data && !loading" class="empty-state">等待文案生成...</div>
 
     <div v-if="loading || data?.streaming" class="loading-state">
       <div class="streaming-spinner"></div>
@@ -47,15 +45,13 @@ const expanded = ref(false);
 </script>
 
 <style scoped>
-.copy-card {
-  min-width: 300px;
-}
+.copy-card { min-width: 300px; }
 
 .empty-state,
 .loading-state {
   color: var(--dewu-text-muted);
   font-size: 14px;
-  padding: 20px 0;
+  padding: 24px 0;
   text-align: center;
 }
 
@@ -68,7 +64,8 @@ const expanded = ref(false);
 .copy-title {
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: var(--dewu-heading);
+  letter-spacing: -0.01em;
 }
 
 .copy-body {
@@ -81,19 +78,18 @@ const expanded = ref(false);
   cursor: pointer;
 }
 
-.copy-body.expanded {
-  max-height: none;
-}
+.copy-body.expanded { max-height: none; }
 
 .expand-hint {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px 0 0;
+  padding: 24px 0 0;
   background: linear-gradient(transparent, var(--dewu-card) 70%);
   color: var(--dewu-blue);
   font-size: 13px;
+  font-weight: 500;
 }
 
 .copy-tags {
@@ -120,11 +116,12 @@ const expanded = ref(false);
 }
 
 .streaming-spinner {
-  width: 32px; height: 32px;
-  border: 3px solid #222;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--dewu-border);
   border-top-color: var(--dewu-blue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin: 0 auto;
+  margin: 0 auto 12px;
 }
 </style>

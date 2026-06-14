@@ -1,8 +1,19 @@
 <template>
   <div class="dashboard page-container">
     <div class="page-header">
-      <h1>📋 工作台</h1>
-      <p>上传商品图片，一键生成识图 → 文案 → 图片 → 得物帖子预览</p>
+      <div class="header-row">
+        <div>
+          <h1>工作台</h1>
+          <p>上传商品图片，一键生成识图 → 文案 → 图片 → 得物帖子预览</p>
+        </div>
+        <div class="header-stats">
+          <div class="stat-chip">
+            <span class="stat-number">⭐</span>
+            <span class="stat-value">{{ auth.points }}</span>
+            <span class="stat-label">积分余额</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Progress Bar -->
@@ -46,68 +57,88 @@
 
       <!-- Center: Controls -->
       <div class="grid-center">
+        <!-- Check-in Card -->
+        <div class="card checkin-card">
+          <button
+            class="btn btn-checkin full-width"
+            :class="{ checked: checkedIn }"
+            :disabled="checkedIn || checkingIn"
+            @click="handleCheckin"
+          >
+            <span v-if="checkedIn">✅ 今日已签到</span>
+            <span v-else>🎁 每日签到领取积分</span>
+            <span class="checkin-bonus">+20 ⭐</span>
+          </button>
+        </div>
+
+        <!-- Controls Card -->
         <div class="card">
           <div class="card-header">
-            <h3>🎮 操作面板</h3>
+            <h3>操作面板</h3>
           </div>
 
-          <!-- Check-in -->
-          <div class="checkin-section">
-            <button
-              class="btn btn-checkin btn-lg full-width"
-              :class="{ checked: checkedIn }"
-              :disabled="checkedIn || checkingIn"
-              @click="handleCheckin"
-            >
-              {{ checkedIn ? '✅ 今日已签到 (+20)' : '🎁 每日签到 +20 ⭐' }}
-            </button>
-          </div>
-
-          <!-- Step-by-step buttons -->
           <div class="control-group">
             <button
-              class="btn btn-primary btn-lg control-btn"
+              class="btn btn-primary control-btn"
               :disabled="!workflow.uploadedImage || workflow.processing"
               @click="handleRecognize"
             >
-              🔍 识图 <span class="cost-tag free">免费</span>
+              <span class="ctrl-icon">🔍</span>
+              <span class="ctrl-text">
+                <span class="ctrl-label">识图</span>
+                <span class="ctrl-desc">识别商品品牌、型号、品类</span>
+              </span>
+              <span class="cost-tag free">免费</span>
             </button>
 
             <button
-              class="btn btn-primary btn-lg control-btn"
+              class="btn btn-primary control-btn"
               :disabled="!workflow.recognition || workflow.processing"
               @click="handleGenerateCopy"
             >
-              ✍️ 生成文案 <span class="cost-tag">⭐4</span>
+              <span class="ctrl-icon">✍️</span>
+              <span class="ctrl-text">
+                <span class="ctrl-label">生成文案</span>
+                <span class="ctrl-desc">AI 得物风格种草文案</span>
+              </span>
+              <span class="cost-tag">⭐ 4</span>
             </button>
 
             <button
-              class="btn btn-primary btn-lg control-btn"
+              class="btn btn-primary control-btn"
               :disabled="!workflow.copy || workflow.processing"
               @click="handleGenerateImage"
             >
-              🖼️ 生成图片 <span class="cost-tag">⭐8</span>
+              <span class="ctrl-icon">🖼️</span>
+              <span class="ctrl-text">
+                <span class="ctrl-label">生成图片</span>
+                <span class="ctrl-desc">AI 商品展示图生成</span>
+              </span>
+              <span class="cost-tag">⭐ 8</span>
             </button>
           </div>
 
           <div class="divider">
-            <span>或者</span>
+            <span>一键执行</span>
           </div>
 
-          <!-- One-click pipeline -->
           <button
-            class="btn btn-accent btn-lg control-btn full-width"
+            class="btn btn-accent control-btn full-width pipeline-btn"
             :disabled="!workflow.uploadedImage || workflow.processing"
             @click="handleRunPipeline"
           >
-            🚀 一键生成全部 <span class="cost-tag accent">⭐10</span>
+            🚀 一键生成全部
+            <span class="cost-tag accent">⭐ 10</span>
           </button>
 
-          <!-- Polling status for async image generation -->
-          <div v-if="workflow.imageJob && workflow.currentStep === 3 && !workflow.generatedImages.length" class="poll-status">
+          <!-- Polling status -->
+          <div
+            v-if="workflow.imageJob && workflow.currentStep === 3 && !workflow.generatedImages.length"
+            class="poll-status"
+          >
             <div class="loading-spinner"></div>
             <p>图片生成中，自动轮询状态...</p>
-            <p class="poll-job">Job ID: {{ workflow.imageJob.jobId }}</p>
+            <p class="poll-job">Job: {{ workflow.imageJob.jobId }}</p>
           </div>
 
           <div v-if="workflow.error" class="error-box">
@@ -116,10 +147,7 @@
         </div>
 
         <!-- Reset -->
-        <button
-          class="btn btn-ghost control-btn full-width"
-          @click="handleReset"
-        >
+        <button class="btn btn-ghost full-width" @click="handleReset">
           🔄 重新开始
         </button>
       </div>
@@ -133,8 +161,8 @@
           :category="workflow.recognition?.category"
           :title="workflow.copy?.title"
           :content="workflow.copy?.content"
-          :tags="workflow.copy?.tags"
-          :hashtags="workflow.copy?.hashtags"
+          :tags="workflow.copy?.tags || []"
+          :hashtags="workflow.copy?.hashtags || []"
           @download="handleDownload"
         />
       </div>
@@ -226,7 +254,6 @@ function startPolling() {
         showToast(`图片生成失败: ${result.errorMessage}`, 'error');
       }
     } catch (e) {
-      // Only stop on terminal errors
       if (e.message.includes('失败')) {
         stopPolling();
         showToast(e.message, 'error');
@@ -258,7 +285,6 @@ function handleReset() {
   showToast('已重置');
 }
 
-// Refresh points after operations
 async function handleRecognize() {
   try {
     await workflow.recognizeProduct();
@@ -305,9 +331,54 @@ onUnmounted(() => stopPolling());
 </script>
 
 <style scoped>
+/* ——— Header ——— */
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.stat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 24px;
+  background: var(--dewu-card);
+  border: 1px solid var(--dewu-border);
+  border-radius: var(--dewu-radius);
+  min-width: 120px;
+}
+
+.stat-chip .stat-number {
+  font-size: 20px;
+}
+
+.stat-chip .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dewu-heading);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-chip .stat-label {
+  font-size: 11px;
+  color: var(--dewu-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ——— Grid ——— */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 380px 220px 1fr;
+  grid-template-columns: 380px 240px 1fr;
   gap: 20px;
   align-items: start;
 }
@@ -328,20 +399,139 @@ onUnmounted(() => stopPolling());
 
 .grid-right {
   position: sticky;
-  top: 80px;
+  top: 72px;
 }
 
+/* ——— Check-in ——— */
+.checkin-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--dewu-border);
+}
+
+.btn-checkin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: linear-gradient(
+    135deg,
+    rgba(242, 201, 76, 0.08),
+    rgba(242, 201, 76, 0.15)
+  );
+  color: var(--dewu-gold);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-checkin:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    rgba(242, 201, 76, 0.12),
+    rgba(242, 201, 76, 0.2)
+  );
+}
+
+.btn-checkin.checked {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--dewu-text-muted);
+  cursor: default;
+}
+
+.checkin-bonus {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(242, 201, 76, 0.15);
+  border-radius: var(--dewu-radius-full);
+  color: var(--dewu-gold);
+  font-weight: 700;
+}
+
+.btn-checkin.checked .checkin-bonus {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--dewu-text-muted);
+}
+
+/* ——— Control Buttons ——— */
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
 .control-btn {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  text-align: left;
+  justify-content: flex-start;
+  font-weight: 500;
 }
 
+.ctrl-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ctrl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ctrl-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ctrl-desc {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.6;
+  line-height: 1.3;
+}
+
+.pipeline-btn {
+  padding: 14px 16px;
+  font-size: 15px;
+  justify-content: center;
+}
+
+/* ——— Cost Tags ——— */
+.cost-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--dewu-radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dewu-text-secondary);
+  flex-shrink: 0;
+}
+
+.cost-tag.free {
+  background: rgba(111, 207, 151, 0.1);
+  color: var(--dewu-green);
+}
+
+.cost-tag.accent {
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--dewu-accent);
+}
+
+/* ——— Divider ——— */
 .divider {
   text-align: center;
   position: relative;
@@ -366,12 +556,15 @@ onUnmounted(() => stopPolling());
   padding: 0 12px;
   color: var(--dewu-text-muted);
   font-size: 12px;
+  font-weight: 500;
 }
 
+/* ——— Poll Status ——— */
 .poll-status {
   margin-top: 16px;
   padding: 16px;
-  background: rgba(24, 144, 255, 0.05);
+  background: rgba(126, 184, 218, 0.05);
+  border: 1px solid rgba(126, 184, 218, 0.1);
   border-radius: var(--dewu-radius-sm);
   text-align: center;
 }
@@ -379,53 +572,28 @@ onUnmounted(() => stopPolling());
 .poll-job {
   font-size: 11px;
   color: var(--dewu-text-muted);
-  font-family: monospace;
+  font-family: 'SF Mono', 'Fira Code', monospace;
   margin-top: 4px;
 }
 
+/* ——— Error Box ——— */
 .error-box {
   margin-top: 16px;
   padding: 12px;
-  background: rgba(255, 77, 79, 0.08);
+  background: rgba(255, 107, 53, 0.08);
+  border: 1px solid rgba(255, 107, 53, 0.15);
   border-radius: var(--dewu-radius-sm);
   color: var(--dewu-accent);
   font-size: 13px;
 }
 
+/* ——— Utilities ——— */
 .full-width { width: 100%; }
-
-.checkin-section { margin-bottom: 16px; }
-
-.btn-checkin {
-  background: linear-gradient(135deg, var(--dewu-gold), #F5D580);
-  color: var(--dewu-base);
-  font-weight: 700;
-}
-.btn-checkin:hover:not(:disabled) {
-  box-shadow: 0 4px 20px var(--dewu-gold-glow);
-  transform: translateY(-1px);
-}
-.btn-checkin.checked {
-  background: var(--dewu-border);
-  color: var(--dewu-text-muted);
-}
-
-.cost-tag {
-  display: inline-block;
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(250, 140, 22, 0.15);
-  color: var(--dewu-orange);
-  margin-left: 4px;
-}
-.cost-tag.free { background: rgba(82, 196, 26, 0.15); color: var(--dewu-green); }
-.cost-tag.accent { background: rgba(255, 77, 79, 0.2); color: var(--dewu-accent); }
 
 .loading-spinner {
   width: 28px;
   height: 28px;
-  border: 2px solid #333;
+  border: 2px solid var(--dewu-border);
   border-top-color: var(--dewu-blue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

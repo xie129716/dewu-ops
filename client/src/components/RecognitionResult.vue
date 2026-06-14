@@ -7,9 +7,7 @@
       </span>
     </div>
 
-    <div v-if="!data && !loading" class="empty-state">
-      等待商品识别...
-    </div>
+    <div v-if="!data && !loading" class="empty-state">等待商品识别...</div>
 
     <div v-if="loading || data?.streaming" class="loading-state">
       <div class="streaming-spinner"></div>
@@ -52,36 +50,34 @@ const confidenceTagClass = computed(() => {
   if (!props.data) return '';
   const c = props.data.confidence;
   if (c === 'high') return 'tag-green';
-  if (c === 'medium') return '';
-  return 'tag';
+  if (c === 'medium') return 'tag-gold';
+  return '';
 });
 
 const confidenceLabel = computed(() => {
   if (!props.data) return '';
   const c = props.data.confidence;
   if (c === 'high') return '高置信度';
-  if (c === 'medium') return '中等置信度';
+  if (c === 'medium') return '中等';
   return '低置信度';
 });
 </script>
 
 <style scoped>
-.recog-card {
-  min-width: 300px;
-}
+.recog-card { min-width: 300px; }
 
 .empty-state,
 .loading-state {
   color: var(--dewu-text-muted);
   font-size: 14px;
-  padding: 20px 0;
+  padding: 24px 0;
   text-align: center;
 }
 
 .recog-content {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .recog-field {
@@ -94,7 +90,8 @@ const confidenceLabel = computed(() => {
   font-size: 12px;
   color: var(--dewu-text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.05em;
+  font-weight: 500;
 }
 
 .field-value {
@@ -105,7 +102,8 @@ const confidenceLabel = computed(() => {
 .field-value.brand {
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--dewu-heading);
+  letter-spacing: -0.01em;
 }
 
 .field-value.product {
@@ -117,6 +115,7 @@ const confidenceLabel = computed(() => {
 .field-value.desc {
   font-size: 13px;
   color: var(--dewu-text-secondary);
+  line-height: 1.6;
 }
 
 .error-msg {
@@ -126,12 +125,12 @@ const confidenceLabel = computed(() => {
 }
 
 .streaming-spinner {
-  width: 32px; height: 32px;
-  border: 3px solid #222;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--dewu-border);
   border-top-color: var(--dewu-blue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin: 0 auto;
+  margin: 0 auto 12px;
 }
-/* blink keyframes defined in dewu-theme.css */
 </style>

@@ -4,17 +4,28 @@
       <div class="auth-header">
         <span class="auth-icon">👟</span>
         <h1>得物运营系统</h1>
-        <p>登录你的账号</p>
+        <p>登录你的账号以继续</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="form-group">
           <label>用户名</label>
-          <input v-model="username" class="input" placeholder="输入用户名" autocomplete="username" />
+          <input
+            v-model="username"
+            class="input"
+            placeholder="输入用户名"
+            autocomplete="username"
+          />
         </div>
         <div class="form-group">
           <label>密码</label>
-          <input v-model="password" class="input" type="password" placeholder="输入密码" autocomplete="current-password" />
+          <input
+            v-model="password"
+            class="input"
+            type="password"
+            placeholder="输入密码"
+            autocomplete="current-password"
+          />
         </div>
 
         <div v-if="error" class="error-msg">{{ error }}</div>
@@ -69,31 +80,89 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 107, 53, 0.06) 0%, transparent 50%),
+    var(--dewu-base);
 }
+
 .auth-card {
   background: var(--dewu-card);
   border: 1px solid var(--dewu-border);
-  border-radius: 16px;
-  padding: 40px;
+  border-radius: var(--dewu-radius);
+  padding: 44px 40px;
   width: 100%;
   max-width: 400px;
+  box-shadow: var(--dewu-shadow-lg);
 }
-.auth-header { text-align: center; margin-bottom: 32px; }
-.auth-icon { font-size: 48px; }
-.auth-header h1 { font-size: 22px; font-weight: 700; color: #fff; margin: 12px 0 4px; }
-.auth-header p { color: var(--dewu-text-muted); font-size: 14px; }
-.auth-form { display: flex; flex-direction: column; gap: 16px; }
-.form-group { display: flex; flex-direction: column; gap: 6px; }
-.form-group label { font-size: 13px; color: var(--dewu-text-secondary); font-weight: 500; }
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.auth-icon {
+  font-size: 44px;
+}
+
+.auth-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dewu-heading);
+  margin: 16px 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.auth-header p {
+  color: var(--dewu-text-muted);
+  font-size: 14px;
+}
+
+/* ——— Form ——— */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: var(--dewu-text-secondary);
+  font-weight: 500;
+}
+
 .error-msg {
   color: var(--dewu-accent);
   font-size: 13px;
-  padding: 8px 12px;
-  background: rgba(255, 77, 79, 0.08);
-  border-radius: 6px;
+  padding: 10px 14px;
+  background: rgba(255, 107, 53, 0.08);
+  border: 1px solid rgba(255, 107, 53, 0.15);
+  border-radius: var(--dewu-radius-sm);
 }
+
 .full-width { width: 100%; }
-.auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--dewu-text-muted); }
-.auth-footer a { color: var(--dewu-blue); text-decoration: none; }
-.auth-footer a:hover { text-decoration: underline; }
+
+/* ——— Footer ——— */
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--dewu-text-muted);
+}
+
+.auth-footer a {
+  color: var(--dewu-accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.auth-footer a:hover {
+  color: var(--dewu-accent-hover);
+}
 </style>

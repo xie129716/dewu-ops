@@ -17,10 +17,14 @@
       </div>
       <div class="step-info">
         <span class="step-label">{{ step.label }}</span>
-        <span v-if="processing && currentStep === i" class="step-status">进行中...</span>
+        <span v-if="processing && currentStep === i" class="step-status">进行中</span>
         <span v-else-if="currentStep > i" class="step-status done">完成</span>
       </div>
-      <div v-if="i < steps.length - 1" class="step-line" :class="{ 'step-line--done': currentStep > i + 1 }"></div>
+      <div
+        v-if="i < steps.length - 1"
+        class="step-line"
+        :class="{ 'step-line--done': currentStep > i + 1 }"
+      ></div>
     </div>
   </div>
 </template>
@@ -46,7 +50,7 @@ const steps = [
   align-items: flex-start;
   justify-content: center;
   gap: 0;
-  padding: 20px 0;
+  padding: 24px 0;
 }
 
 .step {
@@ -59,11 +63,11 @@ const steps = [
 }
 
 .step-indicator {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: #222;
-  border: 2px solid #333;
+  background: var(--dewu-card);
+  border: 2px solid var(--dewu-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,7 +81,7 @@ const steps = [
   border-color: var(--dewu-accent);
   color: var(--dewu-accent);
   box-shadow: 0 0 12px var(--dewu-accent-glow);
-  animation: pulse 1.5s infinite;
+  animation: step-pulse 1.5s infinite;
 }
 
 .step--done .step-indicator {
@@ -92,56 +96,49 @@ const steps = [
   color: #fff;
 }
 
-@keyframes pulse {
+@keyframes step-pulse {
   0%, 100% { box-shadow: 0 0 4px var(--dewu-accent-glow); }
-  50% { box-shadow: 0 0 16px var(--dewu-accent-glow); }
+  50% { box-shadow: 0 0 18px var(--dewu-accent-glow); }
 }
 
-.step-check, .step-cross {
+.step-check,
+.step-cross {
   font-size: 16px;
   font-weight: 700;
 }
 
 .step-info {
   text-align: center;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .step-label {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dewu-text-muted);
+  font-weight: 500;
 }
 
-.step--active .step-label {
-  color: #fff;
-}
-
-.step--done .step-label {
-  color: var(--dewu-green);
-}
+.step--active .step-label { color: var(--dewu-heading); }
+.step--done .step-label { color: var(--dewu-green); }
 
 .step-status {
   display: block;
   font-size: 11px;
   color: var(--dewu-text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
-.step-status.done {
-  color: var(--dewu-green);
-}
+.step-status.done { color: var(--dewu-green); }
 
 .step-line {
   position: absolute;
-  top: 18px;
-  left: calc(50% + 20px);
-  right: calc(-50% + 20px);
+  top: 20px;
+  left: calc(50% + 22px);
+  right: calc(-50% + 22px);
   height: 2px;
-  background: #333;
+  background: var(--dewu-border);
 }
 
-.step-line--done {
-  background: var(--dewu-green);
-}
+.step-line--done { background: var(--dewu-green); }
 </style>

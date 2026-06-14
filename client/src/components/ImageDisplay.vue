@@ -22,7 +22,10 @@
       <div v-for="(img, i) in images" :key="i" class="image-item">
         <img :src="img.url" :alt="'生成图片 ' + (i + 1)" class="gen-image" />
         <div class="image-actions">
-          <button class="btn btn-ghost btn-sm" @click="$emit('download', img.url, `dewu-${i + 1}.png`)">
+          <button
+            class="btn btn-ghost btn-sm"
+            @click="$emit('download', img.url, `dewu-${i + 1}.png`)"
+          >
             💾 下载
           </button>
         </div>
@@ -53,15 +56,13 @@ const statusText = computed(() => {
 </script>
 
 <style scoped>
-.img-card {
-  min-width: 300px;
-}
+.img-card { min-width: 300px; }
 
 .empty-state,
 .loading-state {
   color: var(--dewu-text-muted);
   font-size: 14px;
-  padding: 20px 0;
+  padding: 24px 0;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -72,8 +73,8 @@ const statusText = computed(() => {
 .loading-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #333;
-  border-top-color: #fff;
+  border: 3px solid var(--dewu-border);
+  border-top-color: var(--dewu-heading);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -89,6 +90,7 @@ const statusText = computed(() => {
   border-radius: var(--dewu-radius-sm);
   overflow: hidden;
   background: #000;
+  border: 1px solid var(--dewu-border);
 }
 
 .gen-image {
