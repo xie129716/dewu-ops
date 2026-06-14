@@ -72,7 +72,7 @@ router.get('/users/:id', (req, res) => {
   }
 });
 
-router.patch('/users/:id', (req, res) => {
+router.patch('/users/:id', async (req, res) => {
   try {
     const db = getDB();
     const { points, password, username } = req.body;
