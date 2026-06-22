@@ -101,6 +101,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     try {
       const data = await api.get('/platforms');
       availablePlatforms.value = (data.list || []).filter(platform => platform.enabled !== false);
+      if (!availablePlatforms.value.length) {
+        availablePlatforms.value = getPlatformFallbacks();
+      }
     } catch (_) {
       availablePlatforms.value = getPlatformFallbacks();
     }
@@ -114,6 +117,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     try {
       const data = await api.get('/templates', { params: { platformKey } });
       availableTemplates.value = data.list || [];
+      if (!availableTemplates.value.length) {
+        availableTemplates.value = getTemplateFallbacks(platformKey);
+      }
     } catch (_) {
       availableTemplates.value = getTemplateFallbacks(platformKey);
     }
