@@ -5,6 +5,7 @@ import { consumeSSE } from '@/utils/sse';
 import { parseJSON } from '@/utils/parse';
 import { useAuthStore } from '@/stores/auth';
 import { createLocalHistoryRecord, updateLocalHistoryRecord } from '@/utils/localHistory';
+import { getPlatformFallbacks, getTemplateFallbacks } from '@/utils/platformFallbacks';
 
 const DEFAULT_VARIABLES = {
   audience: '',
@@ -97,8 +98,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   async function loadPlatforms() {
-    const data = await api.get('/platforms');
-    availablePlatforms.value = data.list || [];
+    try {
+      const data = await api.get('/platforms');
+      availablePlatforms.value = (data.list || []).filter(platform => platform.enabled !== false);
+    } catch (_) {
+      availablePlatforms.value = getPlatformFallbacks();
+    }
     if (!availablePlatforms.value.find(platform => platform.key === selectedPlatform.value) && availablePlatforms.value.length) {
       selectedPlatform.value = availablePlatforms.value[0].key;
     }
@@ -106,8 +111,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   async function loadTemplates(platformKey = selectedPlatform.value) {
-    const data = await api.get('/templates', { params: { platformKey } });
-    availableTemplates.value = data.list || [];
+    try {
+      const data = await api.get('/templates', { params: { platformKey } });
+      availableTemplates.value = data.list || [];
+    } catch (_) {
+      availableTemplates.value = getTemplateFallbacks(platformKey);
+    }
     if (!availableTemplates.value.find(template => template.id === selectedTemplateId.value)) {
       selectedTemplateId.value = availableTemplates.value[0]?.id || null;
     }
