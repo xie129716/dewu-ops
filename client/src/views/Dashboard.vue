@@ -4,7 +4,7 @@
       <div class="header-row">
         <div>
           <h1>多平台运营工作台</h1>
-          <p>上传商品图片，生成抖音 / 小红书 / 公众号 / 得物等平台的内容与商品图</p>
+          <p>上传商品图片，生成抖音 / 小红书 / 公众号 / 得物等热门平台的带货内容与商品图</p>
         </div>
         <div class="header-stats">
           <div class="stat-chip">

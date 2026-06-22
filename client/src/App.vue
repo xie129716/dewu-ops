@@ -6,7 +6,6 @@
           <span class="brand-icon">👟</span>
           <span class="brand-text">得物运营</span>
         </router-link>
-        <span class="badge-pill">AI</span>
       </div>
       <div class="nav-links">
         <router-link to="/" class="nav-link">
@@ -94,17 +93,6 @@ function handleLogout() {
   letter-spacing: -0.02em;
 }
 
-.badge-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  background: rgba(255, 107, 53, 0.12);
-  color: var(--dewu-accent);
-  border-radius: var(--dewu-radius-full);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
 
 .nav-links { display: flex; gap: 2px; flex-wrap: wrap; }
 

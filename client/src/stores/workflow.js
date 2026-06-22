@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import api from '@/api';
 import { consumeSSE } from '@/utils/sse';
 import { parseJSON } from '@/utils/parse';
+import { useAuthStore } from '@/stores/auth';
+import { createLocalHistoryRecord, updateLocalHistoryRecord } from '@/utils/localHistory';
 
 const DEFAULT_VARIABLES = {
   audience: '',
@@ -12,7 +14,26 @@ const DEFAULT_VARIABLES = {
   scene: '',
 };
 
+function compactRecognition(recognition) {
+  if (!recognition) return null;
+  const { brand, productName, category, description, confidence } = recognition;
+  return { brand, productName, category, description, confidence };
+}
+
+function compactCopy(copy) {
+  if (!copy) return null;
+  const next = { ...copy };
+  delete next.streaming;
+  return next;
+}
+
+function mapImagesToUrls(images = []) {
+  return images.map(item => (typeof item === 'string' ? item : item?.url)).filter(Boolean);
+}
+
 export const useWorkflowStore = defineStore('workflow', () => {
+  const auth = useAuthStore();
+
   const uploadedImage = ref(null);
   const recognition = ref(null);
   const copy = ref(null);
@@ -33,6 +54,31 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const currentStep = ref(0);
   const error = ref(null);
   const processing = ref(false);
+
+  function getLocalHistoryUserId() {
+    return auth.user?.id || 'guest';
+  }
+
+  function upsertLocalHistory(patch = {}) {
+    const userId = getLocalHistoryUserId();
+    if (historyId.value) {
+      const updated = updateLocalHistoryRecord(userId, historyId.value, patch);
+      return updated;
+    }
+
+    const created = createLocalHistoryRecord(userId, {
+      original_image: uploadedImage.value?.imageUrl || '',
+      recognition_result: compactRecognition(recognition.value),
+      copy_result: compactCopy(copy.value),
+      generated_images: mapImagesToUrls(generatedImages.value),
+      platform_key: selectedPlatform.value,
+      template_id: selectedTemplateId.value,
+      workflow_mode: 'manual',
+      ...patch,
+    });
+    historyId.value = created.id;
+    return created;
+  }
 
   function reset() {
     uploadedImage.value = null;
@@ -238,7 +284,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       productName: recognition.value.productName,
       category: recognition.value.category,
       description: recognition.value.description,
-      copyResult: copy.value,
+      copyResult: compactCopy(copy.value),
       platformKey: selectedPlatform.value,
       templateId: selectedTemplateId.value,
       variables: templateVariables.value,
@@ -260,7 +306,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
         imageUrl: uploadedImage.value.imageUrl,
         prompt: promptOverride || preview.userPrompt,
         size,
-        historyId: historyId.value,
         platformKey: selectedPlatform.value,
         templateId: selectedTemplateId.value,
       });
@@ -268,6 +313,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
       imageJob.value = { jobId: data.jobId, status: data.status, statusUrl: data.statusUrl };
       taskId.value = data.task?.id || null;
       taskStatus.value = data.task?.status || data.status || '';
+      upsertLocalHistory({
+        status: 'pending_image',
+        job_id: data.jobId,
+        task_id: taskId.value,
+        prompt_snapshot_json: { copyPrompt: copyPromptDraft.value, imagePrompt: preview },
+        generated_images: [],
+      });
       return data;
     } catch (e) {
       error.value = e.message;
@@ -287,11 +339,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
         processing.value = false;
         taskStatus.value = 'completed';
         if (historyId.value) {
-          await api.patch(`/history/${historyId.value}`, {
+          updateLocalHistoryRecord(getLocalHistoryUserId(), historyId.value, {
             status: 'completed',
-            generated_images: data.resultUrls,
-            job_id: imageJob.value?.jobId,
+            generated_images: data.resultUrls || [],
             task_id: taskId.value,
+            job_id: imageJob.value?.jobId,
+            result_snapshot_json: { completedAt: new Date().toISOString() },
           });
         }
         return data;
@@ -299,6 +352,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
       if (data.status === 'failed') {
         processing.value = false;
         taskStatus.value = 'failed';
+        if (historyId.value) {
+          updateLocalHistoryRecord(getLocalHistoryUserId(), historyId.value, {
+            status: 'failed',
+            task_id: taskId.value,
+            job_id: imageJob.value?.jobId,
+          });
+        }
         throw new Error(`图片生成失败: ${data.errorMessage}`);
       }
       taskStatus.value = data.status;
@@ -330,10 +390,27 @@ export const useWorkflowStore = defineStore('workflow', () => {
       recognition.value = data.recognition;
       copy.value = { ...data.copy, platformKey: selectedPlatform.value };
       imageJob.value = data.imageJob;
-      historyId.value = data.historyId;
       taskId.value = data.task?.id || data.taskId || null;
       taskStatus.value = data.task?.status || data.imageJob?.status || '';
       currentStep.value = 3;
+
+      const localRecord = createLocalHistoryRecord(getLocalHistoryUserId(), {
+        original_image: uploadedImage.value.imageUrl,
+        recognition_result: compactRecognition(data.recognition),
+        copy_result: compactCopy(data.copy),
+        generated_images: [],
+        status: 'pending_image',
+        job_id: data.imageJob?.jobId || null,
+        task_id: taskId.value,
+        platform_key: selectedPlatform.value,
+        template_id: selectedTemplateId.value,
+        workflow_mode: 'one_click',
+        prompt_snapshot_json: {
+          copyPromptHidden: true,
+          imagePromptHidden: true,
+        },
+      });
+      historyId.value = localRecord.id;
 
       return data;
     } catch (e) {
@@ -362,12 +439,27 @@ export const useWorkflowStore = defineStore('workflow', () => {
       recognition.value = data.recognition;
       copy.value = { ...data.copy, platformKey: selectedPlatform.value };
       imageJob.value = data.imageJob;
-      historyId.value = data.historyId;
       taskId.value = data.task?.id || null;
       taskStatus.value = data.task?.status || data.imageJob?.status || '';
       copyPromptDraft.value = data.prompt?.copyPrompt || null;
       imagePromptDraft.value = data.prompt?.imagePrompt || null;
       currentStep.value = 3;
+
+      const localRecord = createLocalHistoryRecord(getLocalHistoryUserId(), {
+        original_image: uploadedImage.value.imageUrl,
+        recognition_result: compactRecognition(data.recognition),
+        copy_result: compactCopy(data.copy),
+        generated_images: [],
+        status: 'pending_image',
+        job_id: data.imageJob?.jobId || null,
+        task_id: taskId.value,
+        platform_key: selectedPlatform.value,
+        template_id: selectedTemplateId.value,
+        workflow_mode: 'manual',
+        prompt_snapshot_json: data.prompt || { copyPrompt: copyPromptDraft.value, imagePrompt: imagePromptDraft.value },
+      });
+      historyId.value = localRecord.id;
+
       return data;
     } catch (e) {
       error.value = e.message;

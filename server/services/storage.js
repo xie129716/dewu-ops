@@ -66,8 +66,8 @@ const DEFAULT_TEMPLATES = [
       { key: 'tone', label: '语气风格', type: 'text', default: '潮流种草、真实推荐' },
       { key: 'sellingPoints', label: '核心卖点', type: 'textarea', default: '' },
     ],
-    content_prompt_template: '围绕 {{brand}} {{productName}} 生成适合得物社区的种草文案，目标人群：{{audience}}，语气：{{tone}}，核心卖点：{{sellingPoints}}。',
-    image_prompt_template: '保持 {{brand}} {{productName}} 主体外观完全不变，输出适合得物社区与电商种草的高级商品展示图。',
+    content_prompt_template: '围绕 {{brand}} {{productName}} 生成适合得物社区的种草文案，输出标题、正文、标签、hashtags。目标人群：{{audience}}；语气：{{tone}}；核心卖点：{{sellingPoints}}。正文要有真实安利感和社区传播感。',
+    image_prompt_template: '保持 {{brand}} {{productName}} 主体外观完全不变，输出适合得物社区与电商种草的高级商品展示图，强调质感、光影和高级感。',
     output_schema: { type: 'dewu_post' },
   },
   {
@@ -83,8 +83,8 @@ const DEFAULT_TEMPLATES = [
       { key: 'tone', label: '口播语气', type: 'text', default: '节奏快、强钩子、转化导向' },
       { key: 'cta', label: '行动号召', type: 'text', default: '引导收藏、评论、下单' },
     ],
-    content_prompt_template: '为 {{brand}} {{productName}} 生成抖音带货短视频脚本，目标人群：{{audience}}，语气：{{tone}}，CTA：{{cta}}。',
-    image_prompt_template: '输出适合作为抖音带货封面与商品展示的高清商品图，突出主体、对比、氛围和点击率。',
+    content_prompt_template: '为 {{brand}} {{productName}} 生成抖音带货短视频脚本，输出脚本标题、3秒钩子、口播文案、分镜脚本、视频 caption 和 hashtags。目标人群：{{audience}}；语气：{{tone}}；CTA：{{cta}}。重点突出商品卖点、使用场景、转化理由。',
+    image_prompt_template: '输出适合作为抖音带货封面与商品展示的高清商品图，突出主体、对比、氛围和点击率，可直接用于短视频封面和口播场景插图。',
     output_schema: { type: 'douyin_script' },
   },
   {
@@ -100,8 +100,8 @@ const DEFAULT_TEMPLATES = [
       { key: 'tone', label: '语气风格', type: 'text', default: '真实分享、生活化、种草感强' },
       { key: 'scene', label: '使用场景', type: 'text', default: '日常穿搭/出街' },
     ],
-    content_prompt_template: '为 {{brand}} {{productName}} 生成小红书图文笔记，目标人群：{{audience}}，语气：{{tone}}，重点使用场景：{{scene}}。',
-    image_prompt_template: '输出适合小红书封面和配图的生活方式商品图，画面干净有质感，强调真实场景。',
+    content_prompt_template: '为 {{brand}} {{productName}} 生成小红书图文笔记，输出标题、正文、标签、hashtags 和封面文案。目标人群：{{audience}}；语气：{{tone}}；重点使用场景：{{scene}}。内容要有真实分享感、适合收藏转发。',
+    image_prompt_template: '输出适合小红书封面和配图的生活方式商品图，画面干净有质感，强调真实场景、生活化氛围和封面点击率。',
     output_schema: { type: 'xiaohongshu_note' },
   },
   {
@@ -117,8 +117,8 @@ const DEFAULT_TEMPLATES = [
       { key: 'tone', label: '文章风格', type: 'text', default: '清晰、专业、有导购逻辑' },
       { key: 'cta', label: '行动号召', type: 'text', default: '引导了解详情与咨询购买' },
     ],
-    content_prompt_template: '为 {{brand}} {{productName}} 生成微信公众号商品文章，目标人群：{{audience}}，文章风格：{{tone}}，CTA：{{cta}}。',
-    image_prompt_template: '输出适合公众号头图与配图的商品图，强调高级质感、可读性与图文搭配。',
+    content_prompt_template: '为 {{brand}} {{productName}} 生成微信公众号商品文章，输出文章标题、摘要、提纲、正文、CTA 和关键词。目标人群：{{audience}}；文章风格：{{tone}}；CTA：{{cta}}。正文要层次清晰，适合图文推送和导购阅读。',
+    image_prompt_template: '输出适合公众号头图与配图的商品图，强调高级质感、可读性与图文搭配，适合作为封面和正文插图。',
     output_schema: { type: 'wechat_article' },
   },
 ];

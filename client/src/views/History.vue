@@ -2,7 +2,7 @@
   <div class="history-page page-container">
     <div class="page-header">
       <h1>历史记录</h1>
-      <p>查看过往的多平台商品识别、内容生成与图片生成结果</p>
+      <p>查看当前浏览器本地保存的多平台内容生成记录</p>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -20,7 +20,7 @@
 
     <div v-else class="history-list">
       <HistoryCard
-        v-for="record in records"
+        v-for="record in pagedRecords"
         :key="record.id"
         :record="record"
         @preview="openPreview"
@@ -47,7 +47,7 @@
           <div class="modal-body">
             <ContentPreview
               :platform-key="previewRecord.platform_key || 'dewu'"
-              :generated-images="previewRecord.generated_images || []"
+              :generated-images="(previewRecord.generated_images || []).map(url => ({ url }))"
               :recognition-data="previewRecord.recognition_result || {}"
               :copy-data="previewRecord.copy_result || {}"
               @download="handleDownload"
@@ -60,16 +60,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '@/api';
+import { computed, ref, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth';
 import HistoryCard from '@/components/HistoryCard.vue';
 import ContentPreview from '@/components/ContentPreview.vue';
 import { downloadImage } from '@/utils/download';
+import { listLocalHistory, deleteLocalHistoryRecord } from '@/utils/localHistory';
 
+const auth = useAuthStore();
 const records = ref([]);
 const loading = ref(true);
 const page = ref(1);
-const totalPages = ref(1);
+const pageSize = 10;
 const previewRecord = ref(null);
 
 const platformMap = {
@@ -79,37 +81,29 @@ const platformMap = {
   wechat_oa: '微信公众号',
 };
 
-async function loadPage(p) {
-  page.value = p;
-  loading.value = true;
-  try {
-    await syncPending();
-    const data = await api.get('/history', { params: { page: p, pageSize: 10 } });
-    records.value = data.list;
-    totalPages.value = Math.ceil(data.total / data.pageSize);
-  } catch (e) {
-    console.error('Failed to load history:', e);
-  } finally {
-    loading.value = false;
-  }
+const totalPages = computed(() => Math.max(1, Math.ceil(records.value.length / pageSize)));
+const pagedRecords = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return records.value.slice(start, start + pageSize);
+});
+
+function userId() {
+  return auth.user?.id || 'guest';
 }
 
-async function syncPending() {
-  try {
-    await api.post('/history/sync');
-  } catch (e) {
-    console.error('Sync failed:', e);
-  }
+function refreshLocalHistory() {
+  records.value = listLocalHistory(userId()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+function loadPage(p) {
+  page.value = p;
 }
 
 async function handleDelete(id) {
   if (!confirm('确认删除这条记录？')) return;
-  try {
-    await api.delete(`/history/${id}`);
-    records.value = records.value.filter(item => item.id !== id);
-  } catch (e) {
-    alert('删除失败: ' + e.message);
-  }
+  deleteLocalHistoryRecord(userId(), id);
+  refreshLocalHistory();
+  if (page.value > totalPages.value) page.value = totalPages.value;
 }
 
 function openPreview(record) {
@@ -129,7 +123,10 @@ function platformLabel(key) {
   return platformMap[key] || key || '未指定';
 }
 
-onMounted(() => loadPage(1));
+onMounted(() => {
+  refreshLocalHistory();
+  loading.value = false;
+});
 </script>
 
 <style scoped>
