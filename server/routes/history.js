@@ -6,13 +6,13 @@ const {
   getHistoryById,
   deleteHistory,
   updateHistoryStatus,
-  getPendingHistory,
 } = require('../services/storage');
+const { getPendingExternalTasks, markTaskCompleted, markTaskFailed } = require('../services/tasks');
 const { getTaskStatus } = require('../services/img65535');
 
 router.use(authMiddleware);
 
-router.get('/', (req, res) => {
+router.get('/', authMiddleware.requirePermission('history.view'), (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
@@ -23,7 +23,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', authMiddleware.requirePermission('history.view'), (req, res) => {
   try {
     const record = getHistoryById(req.user.id, parseInt(req.params.id));
     if (!record) return res.status(404).json({ error: '记录不存在' });
@@ -33,7 +33,7 @@ router.get('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authMiddleware.requirePermission('history.view'), (req, res) => {
   try {
     deleteHistory(req.user.id, parseInt(req.params.id));
     res.json({ success: true, message: '删除成功' });
@@ -42,33 +42,52 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', authMiddleware.requirePermission('history.view'), (req, res) => {
   try {
-    const { status, generatedImages, jobId } = req.body;
-    updateHistoryStatus(req.user.id, parseInt(req.params.id), status, generatedImages, jobId);
+    updateHistoryStatus(req.user.id, parseInt(req.params.id), req.body);
     res.json({ success: true, message: '更新成功' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/sync', async (req, res) => {
+router.post('/sync', authMiddleware.requirePermission('history.view'), async (req, res) => {
   try {
-    const pending = getPendingHistory();
+    const pending = getPendingExternalTasks().filter(task => task.user_id === req.user.id);
     const updated = [];
 
-    for (const record of pending) {
+    for (const task of pending) {
       try {
-        const status = await getTaskStatus(record.job_id, record.user_id);
+        const status = await getTaskStatus(task.external_job_id, task.user_id);
         if (status.status === 'done') {
-          updateHistoryStatus(record.user_id, record.id, 'completed', status.resultUrls, record.job_id);
-          updated.push({ id: record.id, status: 'completed' });
+          markTaskCompleted(task.id, {
+            output_json: status,
+            progress_message: '历史同步：图片任务已完成',
+          });
+          if (task.history_id) {
+            updateHistoryStatus(task.user_id, task.history_id, {
+              status: 'completed',
+              generated_images: status.resultUrls,
+              job_id: task.external_job_id,
+              task_id: task.id,
+            });
+          }
+          updated.push({ id: task.history_id, taskId: task.id, status: 'completed' });
         } else if (status.status === 'failed') {
-          updateHistoryStatus(record.user_id, record.id, 'failed', null, record.job_id);
-          updated.push({ id: record.id, status: 'failed' });
+          markTaskFailed(task.id, new Error(status.errorMessage || '历史同步：图片任务失败'), {
+            output_json: status,
+          });
+          if (task.history_id) {
+            updateHistoryStatus(task.user_id, task.history_id, {
+              status: 'failed',
+              job_id: task.external_job_id,
+              task_id: task.id,
+            });
+          }
+          updated.push({ id: task.history_id, taskId: task.id, status: 'failed' });
         }
       } catch (e) {
-        console.error(`Sync history #${record.id} failed:`, e.message);
+        console.error(`Sync history task #${task.id} failed:`, e.message);
       }
     }
 

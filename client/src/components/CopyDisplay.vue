@@ -13,18 +13,39 @@
     </div>
 
     <div v-if="data && !data.streaming && !loading" class="copy-content">
-      <h4 class="copy-title">{{ data.title }}</h4>
-      <div class="copy-body" :class="{ expanded }" @click="expanded = !expanded">
-        <p>{{ data.content }}</p>
-        <div v-if="!expanded && data.content.length > 150" class="expand-hint">
-          点击展开全文...
+      <template v-if="platformKey === 'douyin'">
+        <h4 class="copy-title">{{ data.scriptTitle || '抖音脚本' }}</h4>
+        <div class="copy-block"><span class="copy-label">钩子</span><p>{{ data.hook || '—' }}</p></div>
+        <div class="copy-block"><span class="copy-label">口播</span><p class="prewrap">{{ data.voiceover || '—' }}</p></div>
+        <div class="copy-block" v-if="sceneList.length"><span class="copy-label">分镜</span><ol><li v-for="scene in sceneList" :key="scene">{{ scene }}</li></ol></div>
+        <div class="copy-block"><span class="copy-label">视频文案</span><p class="prewrap">{{ data.caption || '—' }}</p></div>
+      </template>
+
+      <template v-else-if="platformKey === 'wechat_oa'">
+        <h4 class="copy-title">{{ data.articleTitle || '公众号文章' }}</h4>
+        <div class="copy-block"><span class="copy-label">摘要</span><p>{{ data.summary || '—' }}</p></div>
+        <div class="copy-block" v-if="outlineList.length"><span class="copy-label">提纲</span><ol><li v-for="item in outlineList" :key="item">{{ item }}</li></ol></div>
+        <div class="copy-body" :class="{ expanded }" @click="expanded = !expanded">
+          <p class="prewrap">{{ data.body || '' }}</p>
+          <div v-if="!expanded && (data.body || '').length > 150" class="expand-hint">点击展开全文...</div>
         </div>
-      </div>
-      <div class="copy-tags">
-        <span v-for="tag in data.tags" :key="tag" class="tag">{{ tag }}</span>
-      </div>
-      <div class="copy-hashtags">
-        <span v-for="ht in data.hashtags" :key="ht" class="hashtag">{{ ht }}</span>
+        <div class="copy-block"><span class="copy-label">CTA</span><p>{{ data.cta || '—' }}</p></div>
+      </template>
+
+      <template v-else>
+        <h4 class="copy-title">{{ data.title || '内容标题' }}</h4>
+        <div class="copy-body" :class="{ expanded }" @click="expanded = !expanded">
+          <p>{{ data.content || '' }}</p>
+          <div v-if="!expanded && (data.content || '').length > 150" class="expand-hint">点击展开全文...</div>
+        </div>
+        <div v-if="data.coverText" class="copy-block"><span class="copy-label">封面文案</span><p>{{ data.coverText }}</p></div>
+        <div class="copy-tags">
+          <span v-for="tag in tagList" :key="tag" class="tag">{{ tag }}</span>
+        </div>
+      </template>
+
+      <div class="copy-hashtags" v-if="hashtagList.length">
+        <span v-for="ht in hashtagList" :key="ht" class="hashtag">{{ ht }}</span>
       </div>
     </div>
 
@@ -33,15 +54,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
   data: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  platformKey: { type: String, default: 'dewu' },
 });
 
 const expanded = ref(false);
+const tagList = computed(() => Array.isArray(props.data?.tags) ? props.data.tags : []);
+const hashtagList = computed(() => Array.isArray(props.data?.hashtags) ? props.data.hashtags : []);
+const sceneList = computed(() => Array.isArray(props.data?.scenes) ? props.data.scenes : []);
+const outlineList = computed(() => Array.isArray(props.data?.outline) ? props.data.outline : []);
 </script>
 
 <style scoped>
@@ -80,6 +106,34 @@ const expanded = ref(false);
 
 .copy-body.expanded { max-height: none; }
 
+.copy-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.copy-label {
+  font-size: 12px;
+  color: var(--dewu-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.prewrap {
+  white-space: pre-wrap;
+}
+
+.copy-block p,
+.copy-block ol {
+  color: var(--dewu-text-secondary);
+  line-height: 1.8;
+}
+
+.copy-block ol {
+  padding-left: 18px;
+}
+
 .expand-hint {
   position: absolute;
   bottom: 0;
@@ -92,12 +146,7 @@ const expanded = ref(false);
   font-weight: 500;
 }
 
-.copy-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
+.copy-tags,
 .copy-hashtags {
   display: flex;
   flex-wrap: wrap;

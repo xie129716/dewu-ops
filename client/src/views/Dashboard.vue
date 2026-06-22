@@ -3,8 +3,8 @@
     <div class="page-header">
       <div class="header-row">
         <div>
-          <h1>工作台</h1>
-          <p>上传商品图片，一键生成识图 → 文案 → 图片 → 得物帖子预览</p>
+          <h1>多平台运营工作台</h1>
+          <p>上传商品图片，生成抖音 / 小红书 / 公众号 / 得物等平台的内容与商品图</p>
         </div>
         <div class="header-stats">
           <div class="stat-chip">
@@ -16,23 +16,11 @@
       </div>
     </div>
 
-    <!-- Progress Bar -->
-    <WorkflowProgress
-      :current-step="workflow.currentStep"
-      :error="workflow.error"
-      :processing="workflow.processing"
-    />
+    <WorkflowProgress :current-step="workflow.currentStep" :error="workflow.error" :processing="workflow.processing" />
 
-    <!-- Main Layout: 3-Column -->
     <div class="dashboard-grid">
-      <!-- Left: Upload + Results -->
       <div class="grid-left">
-        <ImageUploader
-          :model-value="workflow.uploadedImage"
-          :uploading="workflow.processing"
-          :error="uploadError"
-          @upload="handleUpload"
-        />
+        <ImageUploader :model-value="workflow.uploadedImage" :uploading="workflow.processing" :error="uploadError" @upload="handleUpload" />
 
         <RecognitionResult
           :data="workflow.recognition"
@@ -42,47 +30,87 @@
 
         <CopyDisplay
           :data="workflow.copy"
+          :platform-key="workflow.selectedPlatform"
           :loading="workflow.processing && workflow.currentStep === 2"
           :error="workflow.error && workflow.currentStep === 2 ? workflow.error : ''"
         />
 
         <ImageDisplay
           :images="workflow.generatedImages"
-          :status="workflow.imageJob?.status"
+          :status="workflow.taskStatus || workflow.imageJob?.status"
+          :task-id="workflow.taskId"
+          :job-id="workflow.imageJob?.jobId"
           :loading="workflow.processing && workflow.currentStep === 3"
           :error="workflow.error && workflow.currentStep === 3 ? workflow.error : ''"
           @download="handleDownload"
         />
       </div>
 
-      <!-- Center: Controls -->
       <div class="grid-center">
-        <!-- Check-in Card -->
         <div class="card checkin-card">
-          <button
-            class="btn btn-checkin full-width"
-            :class="{ checked: checkedIn }"
-            :disabled="checkedIn || checkingIn"
-            @click="handleCheckin"
-          >
+          <button class="btn btn-checkin full-width" :class="{ checked: checkedIn }" :disabled="checkedIn || checkingIn" @click="handleCheckin">
             <span v-if="checkedIn">✅ 今日已签到</span>
             <span v-else>🎁 每日签到领取积分</span>
             <span class="checkin-bonus">+20 ⭐</span>
           </button>
         </div>
 
-        <!-- Controls Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3>平台与模板</h3>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">目标平台</label>
+            <select class="input" v-model="workflow.selectedPlatform" @change="handlePlatformChange">
+              <option v-for="platform in workflow.availablePlatforms" :key="platform.key" :value="platform.key">
+                {{ platform.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">内容模板</label>
+            <select class="input" v-model="workflow.selectedTemplateId">
+              <option :value="null">默认模板</option>
+              <option v-for="template in workflow.availableTemplates" :key="template.id" :value="template.id">
+                {{ template.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-group">
+              <label class="field-label">目标人群</label>
+              <input class="input" :value="workflow.templateVariables.audience" @input="workflow.updateTemplateVariable('audience', $event.target.value)" placeholder="例如：年轻潮流用户" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">语气风格</label>
+              <input class="input" :value="workflow.templateVariables.tone" @input="workflow.updateTemplateVariable('tone', $event.target.value)" placeholder="例如：真实分享、强转化" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">CTA</label>
+              <input class="input" :value="workflow.templateVariables.cta" @input="workflow.updateTemplateVariable('cta', $event.target.value)" placeholder="例如：引导收藏评论下单" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">使用场景</label>
+              <input class="input" :value="workflow.templateVariables.scene" @input="workflow.updateTemplateVariable('scene', $event.target.value)" placeholder="例如：日常穿搭、通勤" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">核心卖点</label>
+            <textarea class="input textarea" :value="workflow.templateVariables.sellingPoints" @input="workflow.updateTemplateVariable('sellingPoints', $event.target.value)" placeholder="例如：舒适脚感、辨识度高、适合多场景穿搭"></textarea>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
             <h3>操作面板</h3>
           </div>
 
           <div class="control-group">
-            <button
-              class="btn btn-primary control-btn"
-              :disabled="!workflow.uploadedImage || workflow.processing"
-              @click="handleRecognize"
-            >
+            <button class="btn btn-primary control-btn" :disabled="!workflow.uploadedImage || workflow.processing" @click="handleRecognize">
               <span class="ctrl-icon">🔍</span>
               <span class="ctrl-text">
                 <span class="ctrl-label">识图</span>
@@ -91,92 +119,90 @@
               <span class="cost-tag free">免费</span>
             </button>
 
-            <button
-              class="btn btn-primary control-btn"
-              :disabled="!workflow.recognition || workflow.processing"
-              @click="handleGenerateCopy"
-            >
+            <button class="btn btn-primary control-btn" :disabled="!workflow.recognition || workflow.processing || !auth.hasPermission('copy.generate')" @click="handleGenerateCopy">
               <span class="ctrl-icon">✍️</span>
               <span class="ctrl-text">
                 <span class="ctrl-label">生成文案</span>
-                <span class="ctrl-desc">AI 得物风格种草文案</span>
+                <span class="ctrl-desc">手动可读可改 Prompt，生成平台内容</span>
               </span>
               <span class="cost-tag">⭐ 4</span>
             </button>
 
-            <button
-              class="btn btn-primary control-btn"
-              :disabled="!workflow.copy || workflow.processing"
-              @click="handleGenerateImage"
-            >
+            <button class="btn btn-primary control-btn" :disabled="!workflow.copy || workflow.processing || !auth.hasPermission('image.generate')" @click="handleGenerateImage">
               <span class="ctrl-icon">🖼️</span>
               <span class="ctrl-text">
                 <span class="ctrl-label">生成图片</span>
-                <span class="ctrl-desc">AI 商品展示图生成</span>
+                <span class="ctrl-desc">手动可读可改 Prompt，生成平台适配商品图</span>
               </span>
               <span class="cost-tag">⭐ 8</span>
             </button>
           </div>
 
-          <div class="divider">
-            <span>一键执行</span>
-          </div>
+          <div class="divider"><span>自动化执行</span></div>
 
-          <button
-            class="btn btn-accent control-btn full-width pipeline-btn"
-            :disabled="!workflow.uploadedImage || workflow.processing"
-            @click="handleRunPipeline"
-          >
+          <button class="btn btn-accent control-btn full-width pipeline-btn" :disabled="!workflow.uploadedImage || workflow.processing || !auth.hasPermission('workflow.run')" @click="handleRunPipeline">
             🚀 一键生成全部
             <span class="cost-tag accent">⭐ 10</span>
           </button>
 
-          <!-- Polling status -->
-          <div
-            v-if="workflow.imageJob && workflow.currentStep === 3 && !workflow.generatedImages.length"
-            class="poll-status"
-          >
-            <div class="loading-spinner"></div>
-            <p>图片生成中，自动轮询状态...</p>
-            <p class="poll-job">Job: {{ workflow.imageJob.jobId }}</p>
+          <button class="btn btn-ghost control-btn full-width manual-btn" :disabled="!workflow.uploadedImage || workflow.processing || !auth.hasPermission('workflow.run')" @click="handleManualWorkflow">
+            🧩 手动 Prompt 全链路
+          </button>
+
+          <div v-if="workflow.taskId || workflow.imageJob?.jobId" class="task-info">
+            <div class="task-line">任务 #{{ workflow.taskId || '--' }}</div>
+            <div class="task-line">状态：{{ statusText }}</div>
+            <div v-if="workflow.imageJob?.jobId" class="task-line mono">外部任务：{{ workflow.imageJob.jobId }}</div>
           </div>
 
-          <div v-if="workflow.error" class="error-box">
-            ⚠️ {{ workflow.error }}
-          </div>
+          <div v-if="workflow.error" class="error-box">⚠️ {{ workflow.error }}</div>
         </div>
 
-        <!-- Reset -->
-        <button class="btn btn-ghost full-width" @click="handleReset">
-          🔄 重新开始
-        </button>
+        <button class="btn btn-ghost full-width" @click="handleReset">🔄 重新开始</button>
       </div>
 
-      <!-- Right: Dewu Post Preview -->
       <div class="grid-right">
-        <DewuPostPreview
+        <ContentPreview
+          :platform-key="workflow.selectedPlatform"
           :generated-images="workflow.generatedImages"
-          :brand="workflow.recognition?.brand"
-          :product-name="workflow.recognition?.productName"
-          :category="workflow.recognition?.category"
-          :title="workflow.copy?.title"
-          :content="workflow.copy?.content"
-          :tags="workflow.copy?.tags || []"
-          :hashtags="workflow.copy?.hashtags || []"
+          :recognition-data="workflow.recognition || {}"
+          :copy-data="workflow.copy || {}"
           @download="handleDownload"
         />
       </div>
     </div>
 
-    <!-- Toast -->
-    <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
-      {{ toast.message }}
-    </div>
+    <Teleport to="body">
+      <div v-if="promptDialog.show" class="modal-overlay" @click.self="closePromptDialog">
+        <div class="modal-card card">
+          <div class="card-header">
+            <h3>{{ promptDialog.title }}</h3>
+            <button class="btn btn-ghost btn-sm" @click="closePromptDialog">关闭</button>
+          </div>
+          <div class="field-group">
+            <label class="field-label">系统 Prompt</label>
+            <textarea class="input textarea prompt-area" :value="promptDialog.systemPrompt" disabled></textarea>
+          </div>
+          <div class="field-group">
+            <label class="field-label">可编辑用户 Prompt</label>
+            <textarea class="input textarea prompt-area" v-model="promptDialog.userPrompt"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-accent" :disabled="promptDialog.executing" @click="confirmPromptDialog">
+              {{ promptDialog.executing ? '执行中...' : '确认执行' }}
+            </button>
+            <button class="btn btn-ghost" :disabled="promptDialog.executing" @click="closePromptDialog">取消</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">{{ toast.message }}</div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useWorkflowStore } from '@/stores/workflow';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api';
@@ -184,8 +210,8 @@ import ImageUploader from '@/components/ImageUploader.vue';
 import RecognitionResult from '@/components/RecognitionResult.vue';
 import CopyDisplay from '@/components/CopyDisplay.vue';
 import ImageDisplay from '@/components/ImageDisplay.vue';
-import DewuPostPreview from '@/components/DewuPostPreview.vue';
 import WorkflowProgress from '@/components/WorkflowProgress.vue';
+import ContentPreview from '@/components/ContentPreview.vue';
 import { downloadImage } from '@/utils/download';
 
 const workflow = useWorkflowStore();
@@ -196,13 +222,46 @@ const checkingIn = ref(false);
 let pollTimer = null;
 
 const toast = ref({ show: false, message: '', type: 'success' });
+const promptDialog = ref({
+  show: false,
+  mode: '',
+  title: '',
+  systemPrompt: '',
+  userPrompt: '',
+  executing: false,
+});
+
+const statusText = computed(() => {
+  const status = workflow.taskStatus || workflow.imageJob?.status;
+  return {
+    queued: '排队中',
+    pending: '排队中',
+    running: '执行中',
+    waiting_external: '等待外部任务',
+    completed: '已完成',
+    done: '已完成',
+    failed: '失败',
+  }[status] || (status || '—');
+});
+
+async function initWorkbench() {
+  await Promise.all([loadPoints(), workflow.loadPlatforms()]);
+  await workflow.loadTemplates(workflow.selectedPlatform);
+}
 
 async function loadPoints() {
   try {
     const data = await api.get('/points/balance');
     checkedIn.value = data.checkedIn;
-    auth.user.points = data.points;
-  } catch (e) { /* ignore */ }
+    if (auth.user) auth.user.points = data.points;
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+async function handlePlatformChange() {
+  workflow.setPlatform(workflow.selectedPlatform);
+  await workflow.loadTemplates(workflow.selectedPlatform);
 }
 
 async function handleCheckin() {
@@ -271,7 +330,7 @@ function stopPolling() {
 
 function handleDownload(url, filename) {
   try {
-    downloadImage(url, filename);
+    downloadImage(url, filename || 'generated-image.png');
     showToast('下载开始');
   } catch (e) {
     showToast('下载失败', 'error');
@@ -296,9 +355,15 @@ async function handleRecognize() {
 
 async function handleGenerateCopy() {
   try {
-    await workflow.generateCopy();
-    await auth.refreshPoints();
-    showToast('文案生成完成 (-4 积分)');
+    const preview = await workflow.previewCopyPrompt();
+    promptDialog.value = {
+      show: true,
+      mode: 'copy',
+      title: `生成${platformTitle()}文案前确认 Prompt`,
+      systemPrompt: preview.systemPrompt,
+      userPrompt: preview.userPrompt,
+      executing: false,
+    };
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -306,10 +371,15 @@ async function handleGenerateCopy() {
 
 async function handleGenerateImage() {
   try {
-    await workflow.generateImage();
-    await auth.refreshPoints();
-    startPolling();
-    showToast('图片生成任务已提交 (-8 积分)');
+    const preview = await workflow.previewImagePrompt();
+    promptDialog.value = {
+      show: true,
+      mode: 'image',
+      title: `生成${platformTitle()}图片前确认 Prompt`,
+      systemPrompt: preview.systemPrompt,
+      userPrompt: preview.userPrompt,
+      executing: false,
+    };
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -326,12 +396,103 @@ async function handleRunPipeline() {
   }
 }
 
-onMounted(() => loadPoints());
+async function handleManualWorkflow() {
+  try {
+    const preview = await api.post('/workflow/preview', {
+      imageUrl: workflow.uploadedImage?.imageUrl,
+      platformKey: workflow.selectedPlatform,
+      templateId: workflow.selectedTemplateId,
+      variables: workflow.templateVariables,
+    });
+    workflow.recognition = preview.recognition;
+    workflow.copyPromptDraft = preview.copyPrompt;
+    workflow.imagePromptDraft = preview.imagePrompt;
+    promptDialog.value = {
+      show: true,
+      mode: 'manual-workflow',
+      title: `手动全链路执行：先确认文案 Prompt`,
+      systemPrompt: preview.copyPrompt.systemPrompt,
+      userPrompt: preview.copyPrompt.userPrompt,
+      executing: false,
+    };
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function confirmPromptDialog() {
+  promptDialog.value.executing = true;
+  try {
+    if (promptDialog.value.mode === 'copy') {
+      await workflow.generateCopy({ promptOverride: promptDialog.value.userPrompt });
+      await auth.refreshPoints();
+      showToast('文案生成完成 (-4 积分)');
+      closePromptDialog();
+      return;
+    }
+
+    if (promptDialog.value.mode === 'image') {
+      await workflow.generateImage({ promptOverride: promptDialog.value.userPrompt });
+      await auth.refreshPoints();
+      startPolling();
+      showToast('图片生成任务已提交 (-8 积分)');
+      closePromptDialog();
+      return;
+    }
+
+    if (promptDialog.value.mode === 'manual-workflow') {
+      const copyPromptOverride = promptDialog.value.userPrompt;
+      const imagePreview = workflow.imagePromptDraft;
+      promptDialog.value = {
+        show: true,
+        mode: 'manual-workflow-image',
+        title: `手动全链路执行：再确认图片 Prompt`,
+        systemPrompt: imagePreview?.systemPrompt || '',
+        userPrompt: imagePreview?.userPrompt || '',
+        executing: false,
+      };
+      workflow.copyPromptDraft = { ...workflow.copyPromptDraft, userPrompt: copyPromptOverride };
+      return;
+    }
+
+    if (promptDialog.value.mode === 'manual-workflow-image') {
+      await workflow.runManualWorkflow({
+        copyPromptOverride: workflow.copyPromptDraft?.userPrompt || '',
+        imagePromptOverride: promptDialog.value.userPrompt,
+      });
+      await auth.refreshPoints();
+      startPolling();
+      showToast('手动全链路执行中 (-10 积分)');
+      closePromptDialog();
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    promptDialog.value.executing = false;
+  }
+}
+
+function closePromptDialog() {
+  promptDialog.value = {
+    show: false,
+    mode: '',
+    title: '',
+    systemPrompt: '',
+    userPrompt: '',
+    executing: false,
+  };
+}
+
+function platformTitle() {
+  const platform = workflow.availablePlatforms.find(item => item.key === workflow.selectedPlatform);
+  return platform?.name || '目标平台';
+}
+
+onMounted(() => initWorkbench());
 onUnmounted(() => stopPolling());
 </script>
 
 <style scoped>
-/* ——— Header ——— */
 .header-row {
   display: flex;
   align-items: flex-start;
@@ -375,15 +536,14 @@ onUnmounted(() => stopPolling());
   letter-spacing: 0.04em;
 }
 
-/* ——— Grid ——— */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 380px 240px 1fr;
+  grid-template-columns: 380px 320px 1fr;
   gap: 20px;
   align-items: start;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -402,7 +562,6 @@ onUnmounted(() => stopPolling());
   top: 72px;
 }
 
-/* ——— Check-in ——— */
 .checkin-card {
   padding: 0;
   overflow: hidden;
@@ -417,11 +576,7 @@ onUnmounted(() => stopPolling());
   width: 100%;
   padding: 14px 16px;
   border: none;
-  background: linear-gradient(
-    135deg,
-    rgba(242, 201, 76, 0.08),
-    rgba(242, 201, 76, 0.15)
-  );
+  background: linear-gradient(135deg, rgba(242, 201, 76, 0.08), rgba(242, 201, 76, 0.15));
   color: var(--dewu-gold);
   font-size: 14px;
   font-weight: 600;
@@ -430,11 +585,7 @@ onUnmounted(() => stopPolling());
 }
 
 .btn-checkin:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    rgba(242, 201, 76, 0.12),
-    rgba(242, 201, 76, 0.2)
-  );
+  background: linear-gradient(135deg, rgba(242, 201, 76, 0.12), rgba(242, 201, 76, 0.2));
 }
 
 .btn-checkin.checked {
@@ -452,12 +603,42 @@ onUnmounted(() => stopPolling());
   font-weight: 700;
 }
 
-.btn-checkin.checked .checkin-bonus {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--dewu-text-muted);
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
-/* ——— Control Buttons ——— */
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--dewu-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.prompt-area {
+  min-height: 140px;
+}
+
 .control-group {
   display: flex;
   flex-direction: column;
@@ -502,13 +683,15 @@ onUnmounted(() => stopPolling());
   line-height: 1.3;
 }
 
-.pipeline-btn {
-  padding: 14px 16px;
-  font-size: 15px;
+.pipeline-btn,
+.manual-btn {
   justify-content: center;
 }
 
-/* ——— Cost Tags ——— */
+.manual-btn {
+  margin-top: 10px;
+}
+
 .cost-tag {
   display: inline-flex;
   align-items: center;
@@ -531,7 +714,6 @@ onUnmounted(() => stopPolling());
   color: var(--dewu-accent);
 }
 
-/* ——— Divider ——— */
 .divider {
   text-align: center;
   position: relative;
@@ -559,24 +741,24 @@ onUnmounted(() => stopPolling());
   font-weight: 500;
 }
 
-/* ——— Poll Status ——— */
-.poll-status {
+.task-info {
   margin-top: 16px;
-  padding: 16px;
-  background: rgba(126, 184, 218, 0.05);
-  border: 1px solid rgba(126, 184, 218, 0.1);
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
   border-radius: var(--dewu-radius-sm);
-  text-align: center;
+  border: 1px solid var(--dewu-border);
 }
 
-.poll-job {
-  font-size: 11px;
-  color: var(--dewu-text-muted);
+.task-line {
+  color: var(--dewu-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.mono {
   font-family: 'SF Mono', 'Fira Code', monospace;
-  margin-top: 4px;
 }
 
-/* ——— Error Box ——— */
 .error-box {
   margin-top: 16px;
   padding: 12px;
@@ -587,16 +769,28 @@ onUnmounted(() => stopPolling());
   font-size: 13px;
 }
 
-/* ——— Utilities ——— */
 .full-width { width: 100%; }
 
-.loading-spinner {
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--dewu-border);
-  border-top-color: var(--dewu-blue);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 8px;
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1100;
+}
+
+.modal-card {
+  width: min(960px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 }
 </style>

@@ -4,26 +4,33 @@ import api from '@/api';
 import { consumeSSE } from '@/utils/sse';
 import { parseJSON } from '@/utils/parse';
 
-function pickBackground() {
-  const backgrounds = [
-    '一条干净的柏油马路路面，远处有模糊的街景',
-    '一片翠绿的草地，有自然的光斑洒落',
-    '一个安静的公园小径，周围有绿植和树木虚化',
-    '纯色干净的电商摄影棚白色背景，专业产品摄影打光',
-    '阳光明媚的沙滩，远处有海浪和天空',
-  ];
-  return backgrounds[Math.floor(Math.random() * backgrounds.length)];
-}
+const DEFAULT_VARIABLES = {
+  audience: '',
+  tone: '',
+  sellingPoints: '',
+  cta: '',
+  scene: '',
+};
 
 export const useWorkflowStore = defineStore('workflow', () => {
-  const uploadedImage = ref(null);       // { imageUrl, filename, originalName }
-  const recognition = ref(null);         // { brand, productName, category, ... }
-  const copy = ref(null);               // { title, content, tags, hashtags }
-  const imageJob = ref(null);           // { jobId, status, statusUrl }
-  const generatedImages = ref([]);      // [{ url }]
+  const uploadedImage = ref(null);
+  const recognition = ref(null);
+  const copy = ref(null);
+  const imageJob = ref(null);
+  const generatedImages = ref([]);
   const historyId = ref(null);
+  const taskId = ref(null);
+  const taskStatus = ref('');
 
-  const currentStep = ref(0);           // 0=idle, 1=recognizing, 2=generating copy, 3=generating image, 4=complete
+  const selectedPlatform = ref('dewu');
+  const selectedTemplateId = ref(null);
+  const templateVariables = ref({ ...DEFAULT_VARIABLES });
+  const availablePlatforms = ref([]);
+  const availableTemplates = ref([]);
+  const copyPromptDraft = ref(null);
+  const imagePromptDraft = ref(null);
+
+  const currentStep = ref(0);
   const error = ref(null);
   const processing = ref(false);
 
@@ -34,9 +41,51 @@ export const useWorkflowStore = defineStore('workflow', () => {
     imageJob.value = null;
     generatedImages.value = [];
     historyId.value = null;
+    taskId.value = null;
+    taskStatus.value = '';
+    copyPromptDraft.value = null;
+    imagePromptDraft.value = null;
     currentStep.value = 0;
     error.value = null;
     processing.value = false;
+  }
+
+  async function loadPlatforms() {
+    const data = await api.get('/platforms');
+    availablePlatforms.value = data.list || [];
+    if (!availablePlatforms.value.find(platform => platform.key === selectedPlatform.value) && availablePlatforms.value.length) {
+      selectedPlatform.value = availablePlatforms.value[0].key;
+    }
+    return availablePlatforms.value;
+  }
+
+  async function loadTemplates(platformKey = selectedPlatform.value) {
+    const data = await api.get('/templates', { params: { platformKey } });
+    availableTemplates.value = data.list || [];
+    if (!availableTemplates.value.find(template => template.id === selectedTemplateId.value)) {
+      selectedTemplateId.value = availableTemplates.value[0]?.id || null;
+    }
+    return availableTemplates.value;
+  }
+
+  function setPlatform(platformKey) {
+    selectedPlatform.value = platformKey || 'dewu';
+    selectedTemplateId.value = null;
+    copyPromptDraft.value = null;
+    imagePromptDraft.value = null;
+  }
+
+  function setTemplate(templateId) {
+    selectedTemplateId.value = templateId || null;
+    copyPromptDraft.value = null;
+    imagePromptDraft.value = null;
+  }
+
+  function updateTemplateVariable(key, value) {
+    templateVariables.value = {
+      ...templateVariables.value,
+      [key]: value,
+    };
   }
 
   async function uploadImage(file) {
@@ -64,19 +113,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
     processing.value = true;
     error.value = null;
     currentStep.value = 1;
-    // Show loading state during streaming
     recognition.value = { brand: '', productName: '', category: '', description: '', confidence: '', streaming: true };
 
     try {
       let rawText = '';
-      await consumeSSE('/recognize/stream', { imageUrl: uploadedImage.value.imageUrl }, (chunk) => {
+      await consumeSSE('/recognize/stream', { imageUrl: uploadedImage.value.imageUrl }, chunk => {
         rawText = chunk.fullText;
       });
-
-      // Parse complete result
       const final = tryParseRecognition(rawText);
       recognition.value = { ...final, streaming: false, rawResponse: rawText };
       currentStep.value = 2;
+      return recognition.value;
     } catch (e) {
       error.value = e.message;
       recognition.value = null;
@@ -97,7 +144,23 @@ export const useWorkflowStore = defineStore('workflow', () => {
     } : { brand: '', productName: '', category: '', description: '', confidence: '' };
   }
 
-  async function generateCopy(style) {
+  async function previewCopyPrompt(promptOverride = '') {
+    if (!recognition.value) throw new Error('请先完成商品识别');
+    const data = await api.post('/copy/preview-prompt', {
+      brand: recognition.value.brand,
+      productName: recognition.value.productName,
+      category: recognition.value.category,
+      description: recognition.value.description,
+      platformKey: selectedPlatform.value,
+      templateId: selectedTemplateId.value,
+      variables: templateVariables.value,
+      promptOverride,
+    });
+    copyPromptDraft.value = data;
+    return data;
+  }
+
+  async function generateCopy({ promptOverride = '', style = '' } = {}) {
     if (!recognition.value) throw new Error('请先完成商品识别');
     processing.value = true;
     error.value = null;
@@ -105,20 +168,28 @@ export const useWorkflowStore = defineStore('workflow', () => {
     copy.value = { title: '', content: '', tags: [], hashtags: [], streaming: true };
 
     try {
+      const preview = copyPromptDraft.value || await previewCopyPrompt(promptOverride);
       let rawText = '';
       await consumeSSE('/copy/generate/stream', {
         brand: recognition.value.brand,
         productName: recognition.value.productName,
         category: recognition.value.category,
+        description: recognition.value.description,
         style,
-      }, (chunk) => {
+        platformKey: selectedPlatform.value,
+        templateId: selectedTemplateId.value,
+        variables: templateVariables.value,
+        promptOverride: promptOverride || preview.userPrompt,
+      }, chunk => {
         if (chunk.done) return;
         rawText = chunk.fullText;
       });
 
-      const final = tryParseCopy(rawText);
-      copy.value = { ...final, streaming: false };
+      const final = tryParseCopy(rawText, selectedPlatform.value);
+      copy.value = { ...final, platformKey: selectedPlatform.value, streaming: false };
+      copyPromptDraft.value = preview;
       currentStep.value = 3;
+      return copy.value;
     } catch (e) {
       error.value = e.message;
       copy.value = null;
@@ -128,31 +199,75 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
-  function tryParseCopy(text) {
+  function tryParseCopy(text, platformKey = 'dewu') {
     const parsed = parseJSON(text);
-    return parsed ? {
-      title: parsed.title || '',
-      content: parsed.content || '',
-      tags: parsed.tags || [],
-      hashtags: parsed.hashtags || [],
-    } : { title: '', content: text, tags: [], hashtags: [] };
+    if (parsed) return parsed;
+    if (platformKey === 'douyin') {
+      return {
+        scriptTitle: '抖音脚本草稿',
+        hook: '',
+        voiceover: text,
+        scenes: [],
+        caption: text,
+        hashtags: [],
+      };
+    }
+    if (platformKey === 'wechat_oa') {
+      return {
+        articleTitle: '公众号文章草稿',
+        summary: '',
+        outline: [],
+        body: text,
+        cta: '',
+        keywords: [],
+      };
+    }
+    return {
+      title: '',
+      content: text,
+      tags: [],
+      hashtags: [],
+      coverText: '',
+    };
   }
 
-  async function generateImage(size) {
+  async function previewImagePrompt(promptOverride = '') {
+    if (!recognition.value || !copy.value) throw new Error('请先完成商品识别和文案生成');
+    const data = await api.post('/image/preview-prompt', {
+      brand: recognition.value.brand,
+      productName: recognition.value.productName,
+      category: recognition.value.category,
+      description: recognition.value.description,
+      copyResult: copy.value,
+      platformKey: selectedPlatform.value,
+      templateId: selectedTemplateId.value,
+      variables: templateVariables.value,
+      promptOverride,
+    });
+    imagePromptDraft.value = data;
+    return data;
+  }
+
+  async function generateImage({ promptOverride = '', size = '2048x2048' } = {}) {
     if (!uploadedImage.value) throw new Error('请先上传图片');
     if (!recognition.value || !copy.value) throw new Error('请先完成商品识别和文案生成');
     processing.value = true;
     error.value = null;
     currentStep.value = 3;
     try {
-      const bg = pickBackground();
-      const prompt = `参考图中是一个${recognition.value.brand} ${recognition.value.productName}（${recognition.value.category}）。保持图中商品主体的所有外观细节完全不变（包括颜色、材质纹理、logo、鞋型/包型轮廓、缝线等一切细节），仅将背景替换为${bg}。自然阳光从上方照射在商品上，呈现真实的光影效果和立体感。高清质感，画面干净高级，适合电商种草推广，得物App社区风格。`;
+      const preview = imagePromptDraft.value || await previewImagePrompt(promptOverride);
       const data = await api.post('/image/edit', {
         imageUrl: uploadedImage.value.imageUrl,
-        prompt,
-        size: size || '2048x2048',
+        prompt: promptOverride || preview.userPrompt,
+        size,
+        historyId: historyId.value,
+        platformKey: selectedPlatform.value,
+        templateId: selectedTemplateId.value,
       });
-      imageJob.value = data;
+      imagePromptDraft.value = preview;
+      imageJob.value = { jobId: data.jobId, status: data.status, statusUrl: data.statusUrl };
+      taskId.value = data.task?.id || null;
+      taskStatus.value = data.task?.status || data.status || '';
       return data;
     } catch (e) {
       error.value = e.message;
@@ -167,22 +282,26 @@ export const useWorkflowStore = defineStore('workflow', () => {
     try {
       const data = await api.get(`/image/status/${imageJob.value.jobId}`);
       if (data.status === 'done') {
-        generatedImages.value = data.resultUrls.map(url => ({ url }));
+        generatedImages.value = (data.resultUrls || []).map(url => ({ url }));
         currentStep.value = 4;
         processing.value = false;
-        // Update history
+        taskStatus.value = 'completed';
         if (historyId.value) {
           await api.patch(`/history/${historyId.value}`, {
             status: 'completed',
-            generatedImages: data.resultUrls,
-            jobId: imageJob.value?.jobId,
+            generated_images: data.resultUrls,
+            job_id: imageJob.value?.jobId,
+            task_id: taskId.value,
           });
         }
         return data;
-      } else if (data.status === 'failed') {
+      }
+      if (data.status === 'failed') {
         processing.value = false;
+        taskStatus.value = 'failed';
         throw new Error(`图片生成失败: ${data.errorMessage}`);
       }
+      taskStatus.value = data.status;
       return data;
     } catch (e) {
       if (e.message.includes('失败')) {
@@ -193,7 +312,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
-  async function runFullPipeline({ copyStyle, imageSize } = {}) {
+  async function runFullPipeline({ copyStyle = '', imageSize = '2048x2048' } = {}) {
     if (!uploadedImage.value) throw new Error('请先上传图片');
     processing.value = true;
     error.value = null;
@@ -203,12 +322,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
         imageUrl: uploadedImage.value.imageUrl,
         copyStyle,
         imageSize,
+        platformKey: selectedPlatform.value,
+        templateId: selectedTemplateId.value,
+        variables: templateVariables.value,
       });
 
       recognition.value = data.recognition;
-      copy.value = data.copy;
+      copy.value = { ...data.copy, platformKey: selectedPlatform.value };
       imageJob.value = data.imageJob;
       historyId.value = data.historyId;
+      taskId.value = data.task?.id || data.taskId || null;
+      taskStatus.value = data.task?.status || data.imageJob?.status || '';
       currentStep.value = 3;
 
       return data;
@@ -219,6 +343,53 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
+  async function runManualWorkflow({ copyPromptOverride = '', imagePromptOverride = '', imageSize = '2048x2048' } = {}) {
+    if (!uploadedImage.value) throw new Error('请先上传图片');
+    processing.value = true;
+    error.value = null;
+
+    try {
+      const data = await api.post('/workflow/run-manual', {
+        imageUrl: uploadedImage.value.imageUrl,
+        platformKey: selectedPlatform.value,
+        templateId: selectedTemplateId.value,
+        variables: templateVariables.value,
+        copyPromptOverride,
+        imagePromptOverride,
+        imageSize,
+      });
+
+      recognition.value = data.recognition;
+      copy.value = { ...data.copy, platformKey: selectedPlatform.value };
+      imageJob.value = data.imageJob;
+      historyId.value = data.historyId;
+      taskId.value = data.task?.id || null;
+      taskStatus.value = data.task?.status || data.imageJob?.status || '';
+      copyPromptDraft.value = data.prompt?.copyPrompt || null;
+      imagePromptDraft.value = data.prompt?.imagePrompt || null;
+      currentStep.value = 3;
+      return data;
+    } catch (e) {
+      error.value = e.message;
+      processing.value = false;
+      throw e;
+    }
+  }
+
+  async function loadTask(id = taskId.value) {
+    if (!id) return null;
+    const data = await api.get(`/tasks/${id}`);
+    taskStatus.value = data.status;
+    return data;
+  }
+
+  async function pollTask(id = taskId.value) {
+    if (!id) return null;
+    const data = await loadTask(id);
+    if (data?.status) taskStatus.value = data.status;
+    return data;
+  }
+
   return {
     uploadedImage,
     recognition,
@@ -226,15 +397,34 @@ export const useWorkflowStore = defineStore('workflow', () => {
     imageJob,
     generatedImages,
     historyId,
+    taskId,
+    taskStatus,
+    selectedPlatform,
+    selectedTemplateId,
+    templateVariables,
+    availablePlatforms,
+    availableTemplates,
+    copyPromptDraft,
+    imagePromptDraft,
     currentStep,
     error,
     processing,
     reset,
+    loadPlatforms,
+    loadTemplates,
+    setPlatform,
+    setTemplate,
+    updateTemplateVariable,
     uploadImage,
     recognizeProduct,
+    previewCopyPrompt,
     generateCopy,
+    previewImagePrompt,
     generateImage,
     pollImageStatus,
     runFullPipeline,
+    runManualWorkflow,
+    loadTask,
+    pollTask,
   };
 });

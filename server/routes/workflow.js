@@ -6,43 +6,130 @@ const { recognizeProduct } = require('../services/bailian');
 const { generateCopy } = require('../services/deepseek');
 const { submitImageEdit } = require('../services/img65535');
 const { createHistory, deductPoints } = require('../services/storage');
+const { buildCopyPromptPreview, buildImagePromptPreview } = require('../services/prompts');
+const {
+  createQueuedTask,
+  markTaskRunning,
+  markTaskWaitingExternal,
+  markTaskFailed,
+} = require('../services/tasks');
+const { normalizePlatformKey } = require('../services/platforms');
 
 const POINT_COST = 10;
 
 router.use(authMiddleware);
 
-router.post('/run', authMiddleware.requirePoints(POINT_COST), async (req, res) => {
+router.post('/preview', authMiddleware.requirePermission('prompt.view_manual'), async (req, res) => {
   try {
-    const { imageUrl, copyStyle, imageSize } = req.body;
+    const { imageUrl, platformKey = 'dewu', templateId, variables = {}, copyPromptOverride = '', imagePromptOverride = '' } = req.body;
     if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
+
+    const localPath = path.join(__dirname, '..', imageUrl);
+    const recognition = await recognizeProduct(localPath, req.user.id);
+    const copyPrompt = buildCopyPromptPreview({
+      productInfo: recognition,
+      platformKey,
+      templateId,
+      variables,
+      promptOverride: copyPromptOverride,
+    });
+    const imagePrompt = buildImagePromptPreview({
+      productInfo: recognition,
+      platformKey,
+      templateId,
+      variables,
+      promptOverride: imagePromptOverride,
+    });
+
+    res.json({
+      success: true,
+      platformKey: normalizePlatformKey(platformKey),
+      recognition,
+      copyPrompt,
+      imagePrompt,
+    });
+  } catch (err) {
+    console.error('[Workflow Preview] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/run', authMiddleware.requirePoints(POINT_COST), authMiddleware.requirePermission('workflow.run'), async (req, res) => {
+  const {
+    imageUrl,
+    copyStyle,
+    imageSize,
+    platformKey = 'dewu',
+    templateId = null,
+    variables = {},
+  } = req.body;
+
+  const normalizedPlatformKey = normalizePlatformKey(platformKey);
+  const task = createQueuedTask({
+    type: 'workflow_run',
+    source: 'one_click',
+    user_id: req.user.id,
+    platform_key: normalizedPlatformKey,
+    template_id: templateId,
+    input_json: { imageUrl, copyStyle, imageSize, platformKey: normalizedPlatformKey, templateId, variables },
+  });
+
+  try {
+    if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
+
+    markTaskRunning(task.id, { progress_step: 'recognize', progress_message: '正在识别商品' });
 
     const uid = req.user.id;
     const localPath = path.join(__dirname, '..', imageUrl);
-    const results = {};
+    const results = {
+      platformKey: normalizedPlatformKey,
+      templateId,
+      taskId: task.id,
+    };
 
-    // Step 1: Recognize (free)
-    const recognition = await recognizeProduct(localPath);
+    const recognition = await recognizeProduct(localPath, req.user.id);
     results.recognition = recognition;
 
-    // Step 2: Generate copy
+    const copyPrompt = buildCopyPromptPreview({
+      productInfo: recognition,
+      platformKey: normalizedPlatformKey,
+      templateId,
+      variables,
+    });
+
+    markTaskRunning(task.id, { progress_step: 'copy', progress_message: '正在生成平台内容' });
     const copy = await generateCopy(
-      { brand: recognition.brand, productName: recognition.productName, category: recognition.category },
-      { style: copyStyle }
+      recognition,
+      {
+        style: copyStyle,
+        platformKey: normalizedPlatformKey,
+        templateId,
+        variables,
+        systemPrompt: copyPrompt.systemPrompt,
+        userPrompt: copyPrompt.userPrompt,
+      },
+      req.user.id
     );
     results.copy = copy;
 
-    // Step 3: Generate image
+    const imagePrompt = buildImagePromptPreview({
+      productInfo: recognition,
+      copyResult: copy,
+      platformKey: normalizedPlatformKey,
+      templateId,
+      variables,
+    });
+
+    markTaskRunning(task.id, { progress_step: 'image_submit', progress_message: '正在提交图片生成任务' });
     const imageJob = await submitImageEdit({
       imagePath: localPath,
-      prompt: buildImagePrompt(recognition, copy),
+      prompt: imagePrompt.userPrompt,
       size: imageSize || '2048x2048',
-    });
+    }, req.user.id);
     results.imageJob = imageJob;
 
-    // Deduct points
     deductPoints(uid, POINT_COST);
 
-    // Save history
     const historyRecord = createHistory(uid, {
       original_image: imageUrl,
       recognition_result: recognition,
@@ -50,32 +137,167 @@ router.post('/run', authMiddleware.requirePoints(POINT_COST), async (req, res) =
       generated_images: null,
       status: 'pending_image',
       job_id: imageJob.jobId,
+      task_id: task.id,
+      platform_key: normalizedPlatformKey,
+      template_id: templateId,
+      workflow_mode: 'one_click',
+      prompt_snapshot_json: {
+        copyPromptHidden: true,
+        imagePromptHidden: true,
+      },
+      result_snapshot_json: {
+        platformKey: normalizedPlatformKey,
+        templateId,
+      },
     });
     results.historyId = historyRecord.id;
     results.cost = POINT_COST;
 
-    res.json({ success: true, ...results });
+    const waitingTask = markTaskWaitingExternal(task.id, {
+      history_id: historyRecord.id,
+      external_job_id: imageJob.jobId,
+      prompt_snapshot_json: {
+        copyPromptHidden: true,
+        imagePromptHidden: true,
+        platformKey: normalizedPlatformKey,
+        templateId,
+      },
+      output_json: {
+        recognition,
+        copy,
+        imageJob,
+        historyId: historyRecord.id,
+      },
+      progress_message: '全链路已提交，等待外部图片任务完成',
+    });
+
+    res.json({ success: true, task: waitingTask, ...results });
   } catch (err) {
     console.error('[Workflow] Error:', err.message);
+    markTaskFailed(task.id, err);
     res.status(500).json({ error: err.message });
   }
 });
 
-function buildImagePrompt(recognition, copy) {
-  const { brand, productName, category } = recognition;
-  const bg = pickBackground();
-  return `参考图中是一个${brand} ${productName}（${category}）。保持图中商品主体的所有外观细节完全不变（包括颜色、材质纹理、logo、鞋型/包型轮廓、缝线等一切细节），仅将背景替换为${bg}。自然阳光从上方照射在商品上，呈现真实的光影效果和立体感。高清质感，画面干净高级，适合电商种草推广，得物App社区风格。`;
-}
+router.post('/run-manual', authMiddleware.requirePoints(POINT_COST), authMiddleware.requirePermission('workflow.run'), async (req, res) => {
+  const {
+    imageUrl,
+    platformKey = 'dewu',
+    templateId = null,
+    variables = {},
+    copyPromptOverride = '',
+    imagePromptOverride = '',
+    imageSize,
+  } = req.body;
 
-function pickBackground() {
-  const backgrounds = [
-    '一条干净的柏油马路路面，远处有模糊的街景',
-    '一片翠绿的草地，有自然的光斑洒落',
-    '一个安静的公园小径，周围有绿植和树木虚化',
-    '纯色干净的电商摄影棚白色背景，专业产品摄影打光',
-    '阳光明媚的沙滩，远处有海浪和天空',
-  ];
-  return backgrounds[Math.floor(Math.random() * backgrounds.length)];
-}
+  const normalizedPlatformKey = normalizePlatformKey(platformKey);
+  const task = createQueuedTask({
+    type: 'workflow_run',
+    source: 'manual',
+    user_id: req.user.id,
+    platform_key: normalizedPlatformKey,
+    template_id: templateId,
+    input_json: req.body,
+  });
+
+  try {
+    if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
+
+    markTaskRunning(task.id, { progress_step: 'recognize', progress_message: '正在识别商品' });
+    const localPath = path.join(__dirname, '..', imageUrl);
+    const recognition = await recognizeProduct(localPath, req.user.id);
+
+    const copyPrompt = buildCopyPromptPreview({
+      productInfo: recognition,
+      platformKey: normalizedPlatformKey,
+      templateId,
+      variables,
+      promptOverride: copyPromptOverride,
+    });
+
+    markTaskRunning(task.id, { progress_step: 'copy', progress_message: '正在生成平台内容' });
+    const copy = await generateCopy(recognition, {
+      platformKey: normalizedPlatformKey,
+      templateId,
+      variables,
+      systemPrompt: copyPrompt.systemPrompt,
+      userPrompt: copyPrompt.userPrompt,
+    }, req.user.id);
+
+    const imagePrompt = buildImagePromptPreview({
+      productInfo: recognition,
+      copyResult: copy,
+      platformKey: normalizedPlatformKey,
+      templateId,
+      variables,
+      promptOverride: imagePromptOverride,
+    });
+
+    markTaskRunning(task.id, { progress_step: 'image_submit', progress_message: '正在提交图片生成任务' });
+    const imageJob = await submitImageEdit({
+      imagePath: localPath,
+      prompt: imagePrompt.userPrompt,
+      size: imageSize || '2048x2048',
+    }, req.user.id);
+
+    deductPoints(req.user.id, POINT_COST);
+
+    const historyRecord = createHistory(req.user.id, {
+      original_image: imageUrl,
+      recognition_result: recognition,
+      copy_result: copy,
+      generated_images: null,
+      status: 'pending_image',
+      job_id: imageJob.jobId,
+      task_id: task.id,
+      platform_key: normalizedPlatformKey,
+      template_id: templateId,
+      workflow_mode: 'manual',
+      prompt_snapshot_json: {
+        copyPrompt,
+        imagePrompt,
+      },
+      result_snapshot_json: {
+        platformKey: normalizedPlatformKey,
+        templateId,
+      },
+    });
+
+    const waitingTask = markTaskWaitingExternal(task.id, {
+      history_id: historyRecord.id,
+      external_job_id: imageJob.jobId,
+      prompt_snapshot_json: {
+        copyPrompt,
+        imagePrompt,
+      },
+      output_json: {
+        recognition,
+        copy,
+        imageJob,
+        historyId: historyRecord.id,
+      },
+      progress_message: '手动全链路已提交，等待外部图片任务完成',
+    });
+
+    res.json({
+      success: true,
+      task: waitingTask,
+      historyId: historyRecord.id,
+      recognition,
+      copy,
+      imageJob,
+      cost: POINT_COST,
+      platformKey: normalizedPlatformKey,
+      templateId,
+      prompt: {
+        copyPrompt,
+        imagePrompt,
+      },
+    });
+  } catch (err) {
+    markTaskFailed(task.id, err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

@@ -6,6 +6,7 @@ import Settings from '@/views/Settings.vue';
 import Login from '@/views/Login.vue';
 import Register from '@/views/Register.vue';
 import Admin from '@/views/Admin.vue';
+import Tasks from '@/views/Tasks.vue';
 
 const routes = [
   {
@@ -33,6 +34,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/tasks',
+    name: 'Tasks',
+    component: Tasks,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: Settings,
@@ -42,6 +49,7 @@ const routes = [
     path: '/admin',
     name: 'Admin',
     component: Admin,
+    meta: { requiresAuth: true },
   },
 ];
 
@@ -50,11 +58,9 @@ const router = createRouter({
   routes,
 });
 
-// Navigation guard
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore();
 
-  // Fetch user if we have a token but no user data
   if (auth.token && !auth.user) {
     await auth.fetchUser();
   }

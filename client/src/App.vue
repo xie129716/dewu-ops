@@ -17,9 +17,17 @@
           <span>📁</span>
           <span>历史记录</span>
         </router-link>
+        <router-link v-if="auth.hasPermission('task.view')" to="/tasks" class="nav-link">
+          <span>🧭</span>
+          <span>任务中心</span>
+        </router-link>
         <router-link to="/settings" class="nav-link">
           <span>⚙️</span>
           <span>设置</span>
+        </router-link>
+        <router-link v-if="auth.isAdmin" to="/admin" class="nav-link">
+          <span>🛡️</span>
+          <span>管理后台</span>
         </router-link>
       </div>
       <div class="nav-user">
@@ -63,7 +71,6 @@ function handleLogout() {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* ——— Brand ——— */
 .nav-brand {
   display: flex;
   align-items: center;
@@ -87,7 +94,6 @@ function handleLogout() {
   letter-spacing: -0.02em;
 }
 
-/* Freemake-style "AI" pill */
 .badge-pill {
   display: inline-flex;
   align-items: center;
@@ -100,8 +106,7 @@ function handleLogout() {
   letter-spacing: 0.02em;
 }
 
-/* ——— Nav Links ——— */
-.nav-links { display: flex; gap: 2px; }
+.nav-links { display: flex; gap: 2px; flex-wrap: wrap; }
 
 .nav-link {
   display: flex;
@@ -126,7 +131,6 @@ function handleLogout() {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ——— User Section ——— */
 .nav-user {
   display: flex;
   align-items: center;
@@ -148,7 +152,6 @@ function handleLogout() {
   font-weight: 500;
 }
 
-/* ——— Main ——— */
 .app-main {
   min-height: calc(100vh - 56px);
   background: var(--dewu-base);

@@ -7,7 +7,20 @@ const {
 } = require('../services/auth');
 const authMiddleware = require('../middleware/auth');
 
-// Register
+function serializeUser(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    points: user.points || 0,
+    isAdmin: !!user.is_admin,
+    roles: (user.roles || []).map(role => role.key),
+    roleDetails: user.roles || [],
+    permissions: (user.permissions || []).map(permission => permission.key),
+    permissionDetails: user.permissions || [],
+    created_at: user.created_at,
+  };
+}
+
 router.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -16,16 +29,16 @@ router.post('/register', async (req, res) => {
     if (password.length < 6) return res.status(400).json({ error: '密码长度至少 6 位' });
 
     const hash = await hashPassword(password);
-    const user = createUser(username, hash);
-    const token = signToken(user);
-    res.json({ success: true, token, user: { id: user.id, username: user.username, points: 0 } });
+    const created = createUser(username, hash);
+    const user = getUserById(created.id);
+    const token = signToken({ ...user, is_admin: user.is_admin });
+    res.json({ success: true, token, user: serializeUser(user) });
   } catch (err) {
     if (err.message === '用户名已存在') return res.status(409).json({ error: err.message });
     res.status(500).json({ error: err.message });
   }
 });
 
-// Login
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -36,18 +49,18 @@ router.post('/login', async (req, res) => {
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: '账号或密码错误' });
 
-    const token = signToken(user);
-    res.json({ success: true, token, user: { id: user.id, username: user.username, points: user.points || 0, isAdmin: !!user.is_admin } });
+    const fullUser = getUserById(user.id);
+    const token = signToken({ ...fullUser, is_admin: user.is_admin });
+    res.json({ success: true, token, user: serializeUser(fullUser) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get current user
 router.get('/me', authMiddleware, (req, res) => {
   const user = getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-  res.json({ id: user.id, username: user.username, points: user.points || 0, isAdmin: !!user.is_admin, created_at: user.created_at });
+  res.json(serializeUser(user));
 });
 
 module.exports = router;

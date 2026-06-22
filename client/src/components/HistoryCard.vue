@@ -1,36 +1,27 @@
 <template>
   <div class="history-row card" @click="$emit('preview', record)">
-    <!-- Left: Thumbnail -->
     <div class="row-thumb">
       <img v-if="record.original_image" :src="record.original_image" alt="原图" />
       <div v-else class="thumb-placeholder">📷</div>
     </div>
 
-    <!-- Center: Info -->
     <div class="row-info">
       <div class="info-brand" v-if="record.recognition_result?.brand">
         {{ record.recognition_result.brand }}
       </div>
-      <div class="info-name">
-        {{ record.recognition_result?.productName || '未知商品' }}
-      </div>
+      <div class="info-name">{{ titleText }}</div>
       <div class="info-meta">
-        <span v-if="record.recognition_result?.category" class="meta-tag">
-          {{ record.recognition_result.category }}
-        </span>
+        <span v-if="record.platform_key" class="meta-tag">{{ platformLabel }}</span>
+        <span v-if="record.recognition_result?.category" class="meta-tag">{{ record.recognition_result.category }}</span>
         <span class="status-tag" :class="statusClass">{{ statusLabel }}</span>
       </div>
       <div class="info-time">{{ formatTime(record.created_at) }}</div>
+      <div v-if="record.task_id" class="info-sub">任务 #{{ record.task_id }}</div>
     </div>
 
-    <!-- Right: Actions -->
     <div class="row-actions" @click.stop>
-      <button class="btn btn-accent btn-sm" @click="$emit('preview', record)">
-        👁️ 预览
-      </button>
-      <button class="btn btn-ghost btn-sm" @click="$emit('delete', record.id)" title="删除">
-        🗑️
-      </button>
+      <button class="btn btn-accent btn-sm" @click="$emit('preview', record)">👁️ 预览</button>
+      <button class="btn btn-ghost btn-sm" @click="$emit('delete', record.id)" title="删除">🗑️</button>
     </div>
   </div>
 </template>
@@ -43,6 +34,13 @@ const props = defineProps({
 });
 
 defineEmits(['preview', 'delete']);
+
+const platformMap = {
+  dewu: '得物',
+  douyin: '抖音',
+  xiaohongshu: '小红书',
+  wechat_oa: '公众号',
+};
 
 const statusClass = computed(() => {
   switch (props.record.status) {
@@ -61,6 +59,13 @@ const statusLabel = computed(() => {
     default: return props.record.status;
   }
 });
+
+const titleText = computed(() => {
+  const copy = props.record.copy_result || {};
+  return copy.title || copy.scriptTitle || copy.articleTitle || props.record.recognition_result?.productName || '未知商品';
+});
+
+const platformLabel = computed(() => platformMap[props.record.platform_key] || props.record.platform_key || '未指定');
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
@@ -85,7 +90,6 @@ function formatTime(dateStr) {
   background: var(--dewu-card-hover);
 }
 
-/* ——— Thumbnail ——— */
 .row-thumb {
   width: 96px;
   height: 96px;
@@ -112,7 +116,6 @@ function formatTime(dateStr) {
   opacity: 0.25;
 }
 
-/* ——— Info ——— */
 .row-info { flex: 1; min-width: 0; }
 
 .info-brand {
@@ -139,6 +142,7 @@ function formatTime(dateStr) {
   gap: 8px;
   margin-top: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .meta-tag {
@@ -180,7 +184,12 @@ function formatTime(dateStr) {
   margin-top: 6px;
 }
 
-/* ——— Actions ——— */
+.info-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dewu-text-muted);
+}
+
 .row-actions {
   display: flex;
   flex-direction: column;

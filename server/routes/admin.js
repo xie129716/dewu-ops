@@ -1,15 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/auth');
-const { getDB, getSystemConfig, setSystemConfig } = require('../services/storage');
+const {
+  getDB,
+  getSystemConfig,
+  setSystemConfig,
+  listRoles,
+  listPermissions,
+  getRoleById,
+  setUserRoles,
+  listPlatforms,
+  listTemplates,
+  setPlatformEnabled,
+} = require('../services/storage');
 const { hashPassword } = require('../services/auth');
+const authMiddleware = require('../middleware/auth');
 
-// All routes require admin
 router.use(authMiddleware);
 router.use(authMiddleware.requireAdmin);
 
-// ---- API Keys ----
-router.get('/apikeys', (req, res) => {
+router.get('/apikeys', authMiddleware.requirePermission('config.view'), (req, res) => {
   try {
     res.json({
       bailian: !!(process.env.DASHSCOPE_API_KEY || getSystemConfig('bailian_api_key')),
@@ -24,7 +33,7 @@ router.get('/apikeys', (req, res) => {
   }
 });
 
-router.post('/apikeys', (req, res) => {
+router.post('/apikeys', authMiddleware.requirePermission('config.manage'), (req, res) => {
   try {
     const { bailian_api_key, deepseek_api_key, img65535_api_key } = req.body;
     if (bailian_api_key !== undefined) setSystemConfig('bailian_api_key', bailian_api_key);
@@ -36,8 +45,7 @@ router.post('/apikeys', (req, res) => {
   }
 });
 
-// ---- Users ----
-router.get('/users', (req, res) => {
+router.get('/users', authMiddleware.requirePermission('user.view'), (req, res) => {
   try {
     const db = getDB();
     const search = req.query.search || '';
@@ -55,13 +63,31 @@ router.get('/users', (req, res) => {
     const total = db.prepare(`SELECT COUNT(*) as count FROM users WHERE ${where}`).get(...params).count;
     const rows = db.prepare(`SELECT id, username, points, is_admin, created_at FROM users WHERE ${where} ORDER BY id DESC LIMIT ? OFFSET ?`).all(...params, pageSize, offset);
 
-    res.json({ total, page, pageSize, list: rows });
+    const roleMap = new Map();
+    db.prepare(`
+      SELECT ur.user_id, r.key, r.name
+      FROM user_roles ur
+      JOIN roles r ON r.id = ur.role_id
+    `).all().forEach(row => {
+      if (!roleMap.has(row.user_id)) roleMap.set(row.user_id, []);
+      roleMap.get(row.user_id).push({ key: row.key, name: row.name });
+    });
+
+    res.json({
+      total,
+      page,
+      pageSize,
+      list: rows.map(row => ({
+        ...row,
+        roles: roleMap.get(row.id) || [],
+      })),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/users/:id', (req, res) => {
+router.get('/users/:id', authMiddleware.requirePermission('user.view'), (req, res) => {
   try {
     const db = getDB();
     const user = db.prepare('SELECT id, username, points, is_admin, created_at FROM users WHERE id = ?').get(req.params.id);
@@ -72,18 +98,14 @@ router.get('/users/:id', (req, res) => {
   }
 });
 
-router.patch('/users/:id', async (req, res) => {
+router.patch('/users/:id', authMiddleware.requirePermission('user.manage'), async (req, res) => {
   try {
     const db = getDB();
     const { points, password, username } = req.body;
     const id = parseInt(req.params.id);
 
-    if (points !== undefined) {
-      db.prepare('UPDATE users SET points = ? WHERE id = ?').run(parseInt(points), id);
-    }
-    if (username) {
-      db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
-    }
+    if (points !== undefined) db.prepare('UPDATE users SET points = ? WHERE id = ?').run(parseInt(points), id);
+    if (username) db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
     if (password) {
       const hash = await hashPassword(password);
       db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, id);
@@ -94,8 +116,61 @@ router.patch('/users/:id', async (req, res) => {
   }
 });
 
-// ---- Stats ----
-router.get('/stats', (req, res) => {
+router.patch('/users/:id/roles', authMiddleware.requirePermission('role.manage'), (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds.map(Number).filter(Boolean) : [];
+    const validRoleIds = roleIds.filter(roleId => !!getRoleById(roleId));
+    setUserRoles(id, validRoleIds);
+    res.json({ success: true, message: '角色更新成功' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/roles', authMiddleware.requirePermission('role.manage'), (req, res) => {
+  try {
+    res.json({ list: listRoles() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/permissions', authMiddleware.requirePermission('role.manage'), (req, res) => {
+  try {
+    res.json({ list: listPermissions() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/platforms', authMiddleware.requirePermission('config.view'), (req, res) => {
+  try {
+    res.json({ list: listPlatforms() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/platforms/:key', authMiddleware.requirePermission('config.manage'), (req, res) => {
+  try {
+    const platform = setPlatformEnabled(req.params.key, !!req.body.enabled);
+    if (!platform) return res.status(404).json({ error: '平台不存在' });
+    res.json({ success: true, platform });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/templates', authMiddleware.requirePermission('template.view'), (req, res) => {
+  try {
+    res.json({ list: listTemplates({ enabledOnly: false }) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/stats', authMiddleware.requirePermission('config.view'), (req, res) => {
   try {
     const db = getDB();
     const row = db.prepare(`
@@ -103,7 +178,9 @@ router.get('/stats', (req, res) => {
         (SELECT COUNT(*) FROM users) as userCount,
         (SELECT COUNT(*) FROM history) as historyCount,
         (SELECT COALESCE(SUM(points),0) FROM users) as totalPoints,
-        (SELECT COUNT(*) FROM checkins WHERE check_date = date('now')) as todayCheckins
+        (SELECT COUNT(*) FROM checkins WHERE check_date = date('now')) as todayCheckins,
+        (SELECT COUNT(*) FROM tasks) as taskCount,
+        (SELECT COUNT(*) FROM templates) as templateCount
     `).get();
     res.json(row);
   } catch (err) {

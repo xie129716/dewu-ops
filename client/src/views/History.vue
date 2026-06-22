@@ -1,8 +1,8 @@
 <template>
   <div class="history-page page-container">
     <div class="page-header">
-      <h1>📁 历史记录</h1>
-      <p>查看过往的商品识别、文案生成和图片生成记录</p>
+      <h1>历史记录</h1>
+      <p>查看过往的多平台商品识别、内容生成与图片生成结果</p>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -14,7 +14,7 @@
     <div v-else-if="!records.length" class="empty-state card">
       <div class="empty-icon">📭</div>
       <p>暂无历史记录</p>
-      <p class="empty-hint">去工作台生成你的第一条内容吧</p>
+      <p class="empty-hint">去工作台生成你的第一条多平台内容吧</p>
       <router-link to="/" class="btn btn-primary">前往工作台</router-link>
     </div>
 
@@ -28,32 +28,28 @@
       />
     </div>
 
-    <!-- Pagination -->
     <div v-if="totalPages > 1" class="pagination">
-      <button class="btn btn-ghost btn-sm" :disabled="page <= 1" @click="loadPage(page - 1)">
-        ← 上一页
-      </button>
+      <button class="btn btn-ghost btn-sm" :disabled="page <= 1" @click="loadPage(page - 1)">← 上一页</button>
       <span class="page-info">{{ page }} / {{ totalPages }}</span>
-      <button class="btn btn-ghost btn-sm" :disabled="page >= totalPages" @click="loadPage(page + 1)">
-        下一页 →
-      </button>
+      <button class="btn btn-ghost btn-sm" :disabled="page >= totalPages" @click="loadPage(page + 1)">下一页 →</button>
     </div>
 
-    <!-- Preview Modal -->
     <Teleport to="body">
       <div v-if="previewRecord" class="modal-overlay" @click.self="closePreview">
-        <div class="modal-container">
-          <button class="modal-close" @click="closePreview">✕</button>
+        <div class="modal-container card">
+          <div class="card-header preview-header">
+            <div>
+              <h3>内容预览</h3>
+              <p class="preview-meta">平台：{{ platformLabel(previewRecord.platform_key) }} · 任务 #{{ previewRecord.task_id || '--' }}</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" @click="closePreview">关闭</button>
+          </div>
           <div class="modal-body">
-            <DewuPostPreview
+            <ContentPreview
+              :platform-key="previewRecord.platform_key || 'dewu'"
               :generated-images="previewRecord.generated_images || []"
-              :brand="previewRecord.recognition_result?.brand"
-              :product-name="previewRecord.recognition_result?.productName"
-              :category="previewRecord.recognition_result?.category"
-              :title="previewRecord.copy_result?.title"
-              :content="previewRecord.copy_result?.content"
-              :tags="previewRecord.copy_result?.tags || []"
-              :hashtags="previewRecord.copy_result?.hashtags || []"
+              :recognition-data="previewRecord.recognition_result || {}"
+              :copy-data="previewRecord.copy_result || {}"
               @download="handleDownload"
             />
           </div>
@@ -67,7 +63,7 @@
 import { ref, onMounted } from 'vue';
 import api from '@/api';
 import HistoryCard from '@/components/HistoryCard.vue';
-import DewuPostPreview from '@/components/DewuPostPreview.vue';
+import ContentPreview from '@/components/ContentPreview.vue';
 import { downloadImage } from '@/utils/download';
 
 const records = ref([]);
@@ -76,11 +72,17 @@ const page = ref(1);
 const totalPages = ref(1);
 const previewRecord = ref(null);
 
+const platformMap = {
+  dewu: '得物',
+  douyin: '抖音',
+  xiaohongshu: '小红书',
+  wechat_oa: '微信公众号',
+};
+
 async function loadPage(p) {
   page.value = p;
   loading.value = true;
   try {
-    // Sync pending records first
     await syncPending();
     const data = await api.get('/history', { params: { page: p, pageSize: 10 } });
     records.value = data.list;
@@ -94,12 +96,8 @@ async function loadPage(p) {
 
 async function syncPending() {
   try {
-    const result = await api.post('/history/sync');
-    if (result.synced > 0) {
-      console.log(`Synced ${result.synced} pending records`);
-    }
+    await api.post('/history/sync');
   } catch (e) {
-    // Silently fail — sync is best-effort
     console.error('Sync failed:', e);
   }
 }
@@ -108,7 +106,7 @@ async function handleDelete(id) {
   if (!confirm('确认删除这条记录？')) return;
   try {
     await api.delete(`/history/${id}`);
-    records.value = records.value.filter(r => r.id !== id);
+    records.value = records.value.filter(item => item.id !== id);
   } catch (e) {
     alert('删除失败: ' + e.message);
   }
@@ -123,7 +121,12 @@ function closePreview() {
 }
 
 function handleDownload(url, filename) {
-  downloadImage(url, filename);
+  if (!url) return;
+  downloadImage(url, filename || 'generated-image.png');
+}
+
+function platformLabel(key) {
+  return platformMap[key] || key || '未指定';
 }
 
 onMounted(() => loadPage(1));
@@ -147,7 +150,6 @@ onMounted(() => loadPage(1));
 
 .empty-icon { font-size: 48px; opacity: 0.3; }
 .empty-hint { color: var(--dewu-text-muted); font-size: 13px; }
-
 .loading-state { padding: 20px 0; }
 
 .pagination {
@@ -161,7 +163,6 @@ onMounted(() => loadPage(1));
 
 .page-info { color: var(--dewu-text-muted); font-size: 13px; }
 
-/* --- Modal --- */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -174,34 +175,22 @@ onMounted(() => loadPage(1));
 }
 
 .modal-container {
-  position: relative;
+  width: min(960px, 100%);
   max-height: 90vh;
   overflow-y: auto;
-  border-radius: 12px;
 }
 
-.modal-close {
-  position: sticky;
-  top: 8px;
-  right: 0;
-  float: right;
-  z-index: 10;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: -36px;
+.preview-header {
+  align-items: flex-start;
 }
-.modal-close:hover { background: rgba(255,255,255,0.2); }
+
+.preview-meta {
+  color: var(--dewu-text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
 
 .modal-body {
-  /* DewuPostPreview handles its own styling */
+  padding-top: 8px;
 }
 </style>
