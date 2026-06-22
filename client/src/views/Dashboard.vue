@@ -63,7 +63,7 @@
           <div class="field-group">
             <label class="field-label">目标平台</label>
             <select class="input" v-model="workflow.selectedPlatform" @change="handlePlatformChange">
-              <option v-for="platform in workflow.availablePlatforms" :key="platform.key" :value="platform.key">
+              <option v-for="platform in resolvedPlatforms" :key="platform.key" :value="platform.key">
                 {{ platform.name }}
               </option>
             </select>
@@ -73,7 +73,7 @@
             <label class="field-label">内容模板</label>
             <select class="input" v-model="workflow.selectedTemplateId">
               <option :value="null">默认模板</option>
-              <option v-for="template in workflow.availableTemplates" :key="template.id" :value="template.id">
+              <option v-for="template in resolvedTemplates" :key="template.id" :value="template.id">
                 {{ template.name }}
               </option>
             </select>
@@ -213,6 +213,7 @@ import ImageDisplay from '@/components/ImageDisplay.vue';
 import WorkflowProgress from '@/components/WorkflowProgress.vue';
 import ContentPreview from '@/components/ContentPreview.vue';
 import { downloadImage } from '@/utils/download';
+import { getPlatformFallbacks, getTemplateFallbacks } from '@/utils/platformFallbacks';
 
 const workflow = useWorkflowStore();
 const auth = useAuthStore();
@@ -242,6 +243,14 @@ const statusText = computed(() => {
     done: '已完成',
     failed: '失败',
   }[status] || (status || '—');
+});
+
+const resolvedPlatforms = computed(() => {
+  return workflow.availablePlatforms.length ? workflow.availablePlatforms : getPlatformFallbacks();
+});
+
+const resolvedTemplates = computed(() => {
+  return workflow.availableTemplates.length ? workflow.availableTemplates : getTemplateFallbacks(workflow.selectedPlatform);
 });
 
 async function initWorkbench() {
