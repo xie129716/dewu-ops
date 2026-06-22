@@ -34,7 +34,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function hasPermission(permissionKey) {
-    return !!user.value && (permissionKeys.value.includes(permissionKey) || roleKeys.value.includes('super_admin'));
+    if (!user.value) return false;
+    if (permissionKeys.value.includes(permissionKey) || roleKeys.value.includes('super_admin')) return true;
+    if (!permissionKeys.value.length) {
+      const legacyAllowed = ['workflow.run', 'copy.generate', 'image.generate', 'task.view', 'history.view', 'template.view'];
+      return legacyAllowed.includes(permissionKey);
+    }
+    return false;
   }
 
   async function login(payload) {

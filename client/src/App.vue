@@ -4,7 +4,7 @@
       <div class="nav-brand">
         <router-link to="/" class="brand-link">
           <span class="brand-icon">👟</span>
-          <span class="brand-text">得物运营</span>
+          <span class="brand-text">多平台运营</span>
         </router-link>
       </div>
       <div class="nav-links">

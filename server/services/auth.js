@@ -45,9 +45,14 @@ function getUserById(id) {
   const db = getDB();
   const user = db.prepare('SELECT id, username, points, is_admin, created_at FROM users WHERE id = ?').get(id);
   if (!user) return null;
+  let roles = getUserRoleRows(id);
+  if (!roles.length) {
+    assignDefaultRole(id, user.is_admin ? 'super_admin' : 'operator');
+    roles = getUserRoleRows(id);
+  }
   return {
     ...user,
-    roles: getUserRoleRows(id),
+    roles,
     permissions: getUserPermissionRows(id),
   };
 }

@@ -1,4 +1,4 @@
-const { getUserRoleRows, getUserPermissionRows } = require('./storage');
+const { getDB, getRoleByKey, setUserRoles, getUserRoleRows, getUserPermissionRows } = require('./storage');
 
 function getUserRoles(userId) {
   return getUserRoleRows(userId).map(role => ({
@@ -23,7 +23,19 @@ function hasPermission(permissionList = [], permissionKey) {
   return permissionList.some(permission => permission.key === permissionKey);
 }
 
+function ensureUserAccessSeed(userId) {
+  const roles = getUserRoleRows(userId);
+  if (roles.length) return;
+  const user = getDB().prepare('SELECT id, is_admin FROM users WHERE id = ?').get(userId);
+  if (!user) return;
+  const fallbackRole = getRoleByKey(user.is_admin ? 'super_admin' : 'operator');
+  if (fallbackRole) {
+    setUserRoles(userId, [fallbackRole.id]);
+  }
+}
+
 function buildUserAccess(userId) {
+  ensureUserAccessSeed(userId);
   const roles = getUserRoles(userId);
   const permissions = getUserPermissions(userId);
   return {
