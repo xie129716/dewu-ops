@@ -4,7 +4,6 @@ const authMiddleware = require('../middleware/auth');
 const { listPlatforms, getPlatformByKey } = require('../services/storage');
 
 router.use(authMiddleware);
-router.use(authMiddleware.requirePermission('template.view'));
 
 router.get('/', (req, res) => {
   try {

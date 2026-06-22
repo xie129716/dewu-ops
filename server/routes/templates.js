@@ -12,7 +12,7 @@ const { buildCopyPromptPreview, buildImagePromptPreview } = require('../services
 
 router.use(authMiddleware);
 
-router.get('/', authMiddleware.requirePermission('template.view'), (req, res) => {
+router.get('/', (req, res) => {
   try {
     const platformKey = req.query.platformKey || '';
     const enabledOnly = req.query.enabledOnly !== 'false';
@@ -22,7 +22,7 @@ router.get('/', authMiddleware.requirePermission('template.view'), (req, res) =>
   }
 });
 
-router.get('/:id', authMiddleware.requirePermission('template.view'), (req, res) => {
+router.get('/:id', (req, res) => {
   try {
     const template = getTemplateById(parseInt(req.params.id, 10));
     if (!template) return res.status(404).json({ error: '模板不存在' });
