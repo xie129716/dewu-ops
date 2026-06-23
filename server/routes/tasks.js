@@ -12,6 +12,7 @@ const {
   markTaskFailed,
   retryTask,
 } = require('../services/tasks');
+const { listTaskEvents } = require('../services/storage');
 
 router.use(authMiddleware);
 
@@ -49,13 +50,34 @@ router.get('/stats', authMiddleware.requirePermission('task.view'), (req, res) =
   }
 });
 
-router.get('/:id', authMiddleware.requirePermission('task.view'), (req, res) => {
+router.get('/:id', authMiddleware.requirePermission('task.view'), async (req, res) => {
   try {
     const task = getTaskWithEvents(parseInt(req.params.id, 10));
     if (!task) return res.status(404).json({ error: '任务不存在' });
     if (!req.user.permissionKeys.includes('task.manage_all') && !req.user.roleKeys.includes('super_admin') && task.user_id !== req.user.id) {
       return res.status(403).json({ error: '无权查看该任务' });
     }
+
+    const remoteUrls = task.output_json?.resultUrls || [];
+    const shouldCache = Array.isArray(remoteUrls) && remoteUrls.some(url => String(url).startsWith('http'));
+    if (shouldCache) {
+      console.log('[Tasks Detail] task=', task.id, 'detected remote urls, recaching:', JSON.stringify(remoteUrls));
+      const localUrls = await cacheRemoteImages(remoteUrls);
+      const refreshedTask = markTaskCompleted(task.id, {
+        output_json: { ...task.output_json, resultUrls: localUrls },
+        progress_message: task.progress_message || '外部图片任务已完成',
+      });
+      if (task.history_id) {
+        updateHistoryStatus(task.user_id, task.history_id, {
+          generated_images: localUrls,
+          status: 'completed',
+          task_id: task.id,
+          job_id: task.external_job_id,
+        });
+      }
+      return res.json({ ...refreshedTask, events: listTaskEvents(task.id) });
+    }
+
     res.json(task);
   } catch (err) {
     res.status(500).json({ error: err.message });
