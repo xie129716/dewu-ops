@@ -272,6 +272,7 @@ const promptDialog = ref({
 });
 const recognitionDialog = ref({
   show: false,
+  continueAction: '',
   form: {
     brand: '',
     productName: '',
@@ -409,6 +410,7 @@ async function handleRecognize() {
     const result = await workflow.recognizeProduct();
     recognitionDialog.value = {
       show: true,
+      continueAction: '',
       form: {
         brand: result.brand || '',
         productName: result.productName || '',
@@ -427,6 +429,7 @@ function openRecognitionDialog() {
   if (!workflow.recognition) return;
   recognitionDialog.value = {
     show: true,
+    continueAction: recognitionDialog.value.continueAction || '',
     form: {
       brand: workflow.recognition.brand || '',
       productName: workflow.recognition.productName || '',
@@ -437,15 +440,23 @@ function openRecognitionDialog() {
   };
 }
 
-function confirmRecognitionDialog() {
+async function confirmRecognitionDialog() {
+  const continueAction = recognitionDialog.value.continueAction;
   workflow.confirmRecognition({ ...recognitionDialog.value.form });
   closeRecognitionDialog();
   showToast('识别结果已确认，可继续生成文案与图片');
+
+  if (continueAction === 'runPipeline') {
+    await executeRunPipeline();
+  } else if (continueAction === 'runManualWorkflow') {
+    await executeManualWorkflow();
+  }
 }
 
 function closeRecognitionDialog() {
   recognitionDialog.value = {
     show: false,
+    continueAction: '',
     form: {
       brand: '',
       productName: '',
@@ -499,12 +510,7 @@ async function handleGenerateImage() {
   }
 }
 
-async function handleRunPipeline() {
-  if (!workflow.recognitionConfirmed) {
-    openRecognitionDialog();
-    showToast('请先确认识别结果，再执行一键生成');
-    return;
-  }
+async function executeRunPipeline() {
   try {
     await workflow.runFullPipeline();
     await auth.refreshPoints();
@@ -515,18 +521,38 @@ async function handleRunPipeline() {
   }
 }
 
-async function handleManualWorkflow() {
+async function handleRunPipeline() {
   if (!workflow.recognitionConfirmed) {
-    openRecognitionDialog();
-    showToast('请先确认识别结果，再执行手动全链路');
+    try {
+      const result = await workflow.recognizeProduct();
+      recognitionDialog.value = {
+        show: true,
+        continueAction: 'runPipeline',
+        form: {
+          brand: result.brand || '',
+          productName: result.productName || '',
+          category: result.category || '',
+          description: result.description || '',
+          confidence: result.confidence || '',
+        },
+      };
+      showToast('识别完成，请确认结果后自动继续一键生成');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
     return;
   }
+  await executeRunPipeline();
+}
+
+async function executeManualWorkflow() {
   try {
     const preview = await api.post('/workflow/preview', {
       imageUrl: workflow.uploadedImage?.imageUrl,
       platformKey: workflow.selectedPlatform,
       templateId: workflow.selectedTemplateId,
       variables: workflow.templateVariables,
+      productInfo: workflow.recognition || undefined,
     });
     workflow.copyPromptDraft = preview.copyPrompt;
     workflow.imagePromptDraft = preview.imagePrompt;
@@ -541,6 +567,30 @@ async function handleManualWorkflow() {
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+async function handleManualWorkflow() {
+  if (!workflow.recognitionConfirmed) {
+    try {
+      const result = await workflow.recognizeProduct();
+      recognitionDialog.value = {
+        show: true,
+        continueAction: 'runManualWorkflow',
+        form: {
+          brand: result.brand || '',
+          productName: result.productName || '',
+          category: result.category || '',
+          description: result.description || '',
+          confidence: result.confidence || '',
+        },
+      };
+      showToast('识别完成，请确认结果后自动继续手动全链路');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+    return;
+  }
+  await executeManualWorkflow();
 }
 
 async function confirmPromptDialog() {
