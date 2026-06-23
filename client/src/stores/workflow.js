@@ -403,7 +403,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     error.value = null;
 
     try {
-      const data = await api.post('/workflow/run', {
+      const payload = {
         imageUrl: uploadedImage.value.imageUrl,
         copyStyle,
         imageSize,
@@ -411,7 +411,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
         templateId: selectedTemplateId.value,
         variables: templateVariables.value,
         recognitionOverride: recognitionOverride || compactRecognition(recognition.value),
-      });
+      };
+      console.log('[Store] runFullPipeline payload:', JSON.stringify(payload));
+      const data = await api.post('/workflow/run', payload);
 
       recognition.value = data.recognition;
       copy.value = { ...data.copy, platformKey: selectedPlatform.value };
@@ -452,7 +454,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     error.value = null;
 
     try {
-      const data = await api.post('/workflow/run-manual', {
+      const payload = {
         imageUrl: uploadedImage.value.imageUrl,
         platformKey: selectedPlatform.value,
         templateId: selectedTemplateId.value,
@@ -461,7 +463,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
         imagePromptOverride,
         imageSize,
         recognitionOverride: recognitionOverride || compactRecognition(recognition.value),
-      });
+      };
+      console.log('[Store] runManualWorkflow payload:', JSON.stringify(payload));
+      const data = await api.post('/workflow/run-manual', payload);
 
       recognition.value = data.recognition;
       copy.value = { ...data.copy, platformKey: selectedPlatform.value };

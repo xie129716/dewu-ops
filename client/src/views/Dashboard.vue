@@ -408,6 +408,7 @@ function handleReset() {
 async function handleRecognize() {
   try {
     const result = await workflow.recognizeProduct();
+    console.log('[UI] recognize result:', JSON.stringify(result));
     recognitionDialog.value = {
       show: true,
       continueAction: '',
@@ -443,6 +444,8 @@ function openRecognitionDialog() {
 async function confirmRecognitionDialog() {
   const continueAction = recognitionDialog.value.continueAction;
   const confirmedRecognition = { ...recognitionDialog.value.form };
+  console.log('[UI] recognition dialog form before confirm:', JSON.stringify(recognitionDialog.value.form));
+  console.log('[UI] confirmedRecognition prepared:', JSON.stringify(confirmedRecognition));
   workflow.confirmRecognition(confirmedRecognition);
   closeRecognitionDialog();
   showToast('识别结果已确认，可继续生成文案与图片');
@@ -513,6 +516,7 @@ async function handleGenerateImage() {
 
 async function executeRunPipeline(recognitionOverride = null) {
   try {
+    console.log('[UI] executeRunPipeline recognitionOverride:', JSON.stringify(recognitionOverride));
     await workflow.runFullPipeline({ recognitionOverride });
     await auth.refreshPoints();
     startPolling();
@@ -549,6 +553,8 @@ async function handleRunPipeline() {
 async function executeManualWorkflow(recognitionOverride = null) {
   try {
     const effectiveRecognition = recognitionOverride || workflow.recognition || undefined;
+    console.log('[UI] executeManualWorkflow recognitionOverride:', JSON.stringify(recognitionOverride));
+    console.log('[UI] executeManualWorkflow effectiveRecognition:', JSON.stringify(effectiveRecognition));
     const preview = await api.post('/workflow/preview', {
       imageUrl: workflow.uploadedImage?.imageUrl,
       platformKey: workflow.selectedPlatform,

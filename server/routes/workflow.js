@@ -22,10 +22,12 @@ router.use(authMiddleware);
 router.post('/preview', authMiddleware.requirePermission('prompt.view_manual'), async (req, res) => {
   try {
     const { imageUrl, platformKey = 'dewu', templateId, variables = {}, copyPromptOverride = '', imagePromptOverride = '', recognitionOverride = null } = req.body;
+    console.log('[Workflow Preview] recognitionOverride in:', JSON.stringify(recognitionOverride));
     if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
 
     const localPath = path.join(__dirname, '..', imageUrl);
     const recognition = recognitionOverride || await recognizeProduct(localPath, req.user.id);
+    console.log('[Workflow Preview] recognition used:', JSON.stringify(recognition));
     const copyPrompt = buildCopyPromptPreview({
       productInfo: recognition,
       platformKey,
@@ -64,6 +66,7 @@ router.post('/run', authMiddleware.requirePoints(POINT_COST), authMiddleware.req
     variables = {},
     recognitionOverride = null,
   } = req.body;
+  console.log('[Workflow Run] recognitionOverride in:', JSON.stringify(recognitionOverride));
 
   const normalizedPlatformKey = normalizePlatformKey(platformKey);
   const task = createQueuedTask({
@@ -89,6 +92,7 @@ router.post('/run', authMiddleware.requirePoints(POINT_COST), authMiddleware.req
     };
 
     const recognition = recognitionOverride || await recognizeProduct(localPath, req.user.id);
+    console.log('[Workflow Run] recognition used:', JSON.stringify(recognition));
     results.recognition = recognition;
 
     const copyPrompt = buildCopyPromptPreview({
@@ -191,6 +195,7 @@ router.post('/run-manual', authMiddleware.requirePoints(POINT_COST), authMiddlew
     imageSize,
     recognitionOverride = null,
   } = req.body;
+  console.log('[Workflow Run Manual] recognitionOverride in:', JSON.stringify(recognitionOverride));
 
   const normalizedPlatformKey = normalizePlatformKey(platformKey);
   const task = createQueuedTask({
@@ -208,6 +213,7 @@ router.post('/run-manual', authMiddleware.requirePoints(POINT_COST), authMiddlew
     markTaskRunning(task.id, { progress_step: 'recognize', progress_message: '正在识别商品' });
     const localPath = path.join(__dirname, '..', imageUrl);
     const recognition = recognitionOverride || await recognizeProduct(localPath, req.user.id);
+    console.log('[Workflow Run Manual] recognition used:', JSON.stringify(recognition));
 
     const copyPrompt = buildCopyPromptPreview({
       productInfo: recognition,
