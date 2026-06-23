@@ -129,7 +129,7 @@
               <span class="cost-tag">⭐ 4</span>
             </button>
 
-            <button class="btn btn-primary control-btn" :disabled="!workflow.copy || workflow.processing || !auth.hasPermission('image.generate')" @click="handleGenerateImage">
+            <button class="btn btn-primary control-btn" :disabled="!workflow.recognitionConfirmed || !workflow.copy || workflow.processing || !auth.hasPermission('image.generate')" @click="handleGenerateImage">
               <span class="ctrl-icon">🖼️</span>
               <span class="ctrl-text">
                 <span class="ctrl-label">生成图片</span>
@@ -457,6 +457,11 @@ function closeRecognitionDialog() {
 }
 
 async function handleGenerateCopy() {
+  if (!workflow.recognitionConfirmed) {
+    openRecognitionDialog();
+    showToast('请先确认识别结果，再生成文案');
+    return;
+  }
   try {
     const preview = await workflow.previewCopyPrompt();
     promptDialog.value = {
@@ -473,6 +478,11 @@ async function handleGenerateCopy() {
 }
 
 async function handleGenerateImage() {
+  if (!workflow.recognitionConfirmed) {
+    openRecognitionDialog();
+    showToast('请先确认识别结果，再生成图片');
+    return;
+  }
   try {
     const preview = await workflow.previewImagePrompt();
     promptDialog.value = {
@@ -490,6 +500,11 @@ async function handleGenerateImage() {
 }
 
 async function handleRunPipeline() {
+  if (!workflow.recognitionConfirmed) {
+    openRecognitionDialog();
+    showToast('请先确认识别结果，再执行一键生成');
+    return;
+  }
   try {
     await workflow.runFullPipeline();
     await auth.refreshPoints();
@@ -501,6 +516,11 @@ async function handleRunPipeline() {
 }
 
 async function handleManualWorkflow() {
+  if (!workflow.recognitionConfirmed) {
+    openRecognitionDialog();
+    showToast('请先确认识别结果，再执行手动全链路');
+    return;
+  }
   try {
     const preview = await api.post('/workflow/preview', {
       imageUrl: workflow.uploadedImage?.imageUrl,
@@ -508,7 +528,6 @@ async function handleManualWorkflow() {
       templateId: workflow.selectedTemplateId,
       variables: workflow.templateVariables,
     });
-    workflow.confirmRecognition(preview.recognition);
     workflow.copyPromptDraft = preview.copyPrompt;
     workflow.imagePromptDraft = preview.imagePrompt;
     promptDialog.value = {

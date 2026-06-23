@@ -55,6 +55,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const currentStep = ref(0);
   const error = ref(null);
   const processing = ref(false);
+  const recognitionConfirmed = ref(false);
 
   function getLocalHistoryUserId() {
     return auth.user?.id || 'guest';
@@ -95,6 +96,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     currentStep.value = 0;
     error.value = null;
     processing.value = false;
+    recognitionConfirmed.value = false;
   }
 
   async function loadPlatforms() {
@@ -191,7 +193,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       });
       const final = tryParseRecognition(rawText);
       recognition.value = { ...final, streaming: false, rawResponse: rawText };
-      currentStep.value = 2;
+      recognitionConfirmed.value = false;
       return recognition.value;
     } catch (e) {
       error.value = e.message;
@@ -505,6 +507,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
     return data;
   }
 
+  function confirmRecognition(nextRecognition) {
+    recognition.value = {
+      ...nextRecognition,
+      rawResponse: recognition.value?.rawResponse || '',
+      streaming: false,
+    };
+    recognitionConfirmed.value = true;
+    currentStep.value = 2;
+    return recognition.value;
+  }
+
   return {
     uploadedImage,
     recognition,
@@ -524,6 +537,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     currentStep,
     error,
     processing,
+    recognitionConfirmed,
     reset,
     loadPlatforms,
     loadTemplates,
@@ -532,6 +546,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     updateTemplateVariable,
     uploadImage,
     recognizeProduct,
+    confirmRecognition,
     previewCopyPrompt,
     generateCopy,
     previewImagePrompt,
