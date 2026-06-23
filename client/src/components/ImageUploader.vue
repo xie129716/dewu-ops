@@ -68,6 +68,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { compressImageFile } from '@/utils/imageCompress';
 
 const props = defineProps({
   modelValue: { type: Object, default: null },
@@ -95,7 +96,7 @@ function handleFileChange(e) {
   if (file) processFile(file);
 }
 
-function processFile(file) {
+async function processFile(file) {
   if (!file.type.startsWith('image/')) {
     alert('请上传图片文件');
     return;
@@ -104,7 +105,18 @@ function processFile(file) {
     alert('文件大小不能超过 50MB');
     return;
   }
-  emit('upload', file);
+
+  let nextFile = file;
+  if (file.size > 2 * 1024 * 1024) {
+    try {
+      nextFile = await compressImageFile(file);
+      alert('图片已自动压缩后上传，以提升识别稳定性');
+    } catch (_) {
+      nextFile = file;
+    }
+  }
+
+  emit('upload', nextFile);
 }
 
 function clearImage() {

@@ -52,6 +52,12 @@ function buildImagePromptPreview({ productInfo, copyResult = {}, platformKey = '
   const userPrompt = [
     `参考图中是一个${context.brand} ${context.productName}（${context.category}）。`,
     '保持商品主体的颜色、材质、纹理、logo、轮廓、缝线等所有外观细节完全不变。',
+    `目标平台：${platform.name}。`,
+    context.audience ? `目标人群：${context.audience}。` : '',
+    context.tone ? `内容语气：${context.tone}。` : '',
+    context.scene ? `使用场景：${context.scene}。` : '',
+    context.sellingPoints ? `核心卖点：${context.sellingPoints}。` : '',
+    context.cta ? `行动号召：${context.cta}。` : '',
     basePrompt,
     context.copyTitle ? `文案标题参考：${context.copyTitle}` : '',
     context.copyContent ? `文案内容参考：${context.copyContent}` : '',
