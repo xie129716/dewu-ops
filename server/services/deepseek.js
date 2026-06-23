@@ -45,6 +45,35 @@ function buildMessages(productInfo, options = {}) {
   ];
 }
 
+function stripMarkdownArtifacts(text = '') {
+  return String(text)
+    .replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function sanitizeGeneratedValue(value, key = '') {
+  if (Array.isArray(value)) {
+    return value.map(item => sanitizeGeneratedValue(item, key)).filter(Boolean);
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, sanitizeGeneratedValue(v, k)]));
+  }
+  if (typeof value === 'string') {
+    if (key === 'hashtags' || key === 'keywords' || key === 'tags') {
+      return value.trim();
+    }
+    return stripMarkdownArtifacts(value);
+  }
+  return value;
+}
+
 function normalizeGeneratedResult(rawContent, productInfo, options = {}) {
   const normalizedPlatformKey = normalizePlatformKey(options.platformKey || 'dewu');
   const fallback = getFallbackOutput(normalizedPlatformKey, productInfo);
@@ -52,24 +81,24 @@ function normalizeGeneratedResult(rawContent, productInfo, options = {}) {
     const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : rawContent.trim();
     const parsed = JSON.parse(jsonStr);
-    return { ...fallback, ...parsed };
+    return sanitizeGeneratedValue({ ...fallback, ...parsed });
   } catch (_) {
     if (normalizedPlatformKey === 'douyin') {
-      return {
+      return sanitizeGeneratedValue({
         ...fallback,
         caption: rawContent,
-      };
+      });
     }
     if (normalizedPlatformKey === 'wechat_oa') {
-      return {
+      return sanitizeGeneratedValue({
         ...fallback,
         body: rawContent,
-      };
+      });
     }
-    return {
+    return sanitizeGeneratedValue({
       ...fallback,
       content: rawContent,
-    };
+    });
   }
 }
 

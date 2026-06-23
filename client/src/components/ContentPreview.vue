@@ -1,13 +1,19 @@
 <template>
-  <component :is="previewComponent" v-bind="previewProps" @download="handleDownload" />
+  <div ref="previewWrapper" class="content-preview-shell">
+    <div class="preview-toolbar">
+      <button class="btn btn-primary btn-sm" @click="handlePngDownload">🖼️ 导出预览 PNG</button>
+    </div>
+    <component :is="previewComponent" v-bind="previewProps" @download="handleDownload" />
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import DewuPostPreview from '@/components/DewuPostPreview.vue';
 import DouyinPreview from '@/components/previews/DouyinPreview.vue';
 import XiaohongshuPreview from '@/components/previews/XiaohongshuPreview.vue';
 import WechatOAPreview from '@/components/previews/WechatOAPreview.vue';
+import { downloadElementAsPng } from '@/utils/download';
 
 const props = defineProps({
   platformKey: { type: String, default: 'dewu' },
@@ -17,6 +23,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['download']);
+const previewWrapper = ref(null);
 
 const previewComponent = computed(() => {
   switch (props.platformKey) {
@@ -51,4 +58,23 @@ function handleDownload(...args) {
   const [url, filename] = args;
   emit('download', url, filename);
 }
+
+async function handlePngDownload() {
+  if (!previewWrapper.value) return;
+  const filename = `${props.platformKey || 'preview'}-preview.png`;
+  await downloadElementAsPng(previewWrapper.value, filename);
+}
 </script>
+
+<style scoped>
+.content-preview-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

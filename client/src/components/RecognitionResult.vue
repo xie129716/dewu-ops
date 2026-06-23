@@ -2,9 +2,10 @@
   <div class="card recog-card">
     <div class="card-header">
       <h3>🔍 识别结果</h3>
-      <span v-if="data" class="tag" :class="confidenceTagClass">
-        {{ confidenceLabel }}
-      </span>
+      <div class="header-actions">
+        <span v-if="data" class="tag" :class="confidenceTagClass">{{ confidenceLabel }}</span>
+        <button v-if="data && !data.streaming && !loading" class="btn btn-ghost btn-sm" @click="$emit('edit')">编辑确认</button>
+      </div>
     </div>
 
     <div v-if="!data && !loading" class="empty-state">等待商品识别...</div>
@@ -46,6 +47,8 @@ const props = defineProps({
   error: { type: String, default: '' },
 });
 
+defineEmits(['edit']);
+
 const confidenceTagClass = computed(() => {
   if (!props.data) return '';
   const c = props.data.confidence;
@@ -65,6 +68,12 @@ const confidenceLabel = computed(() => {
 
 <style scoped>
 .recog-card { min-width: 300px; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .empty-state,
 .loading-state {

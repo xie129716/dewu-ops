@@ -26,6 +26,7 @@
           :data="workflow.recognition"
           :loading="workflow.processing && workflow.currentStep === 1"
           :error="workflow.error && workflow.currentStep === 1 ? workflow.error : ''"
+          @edit="openRecognitionDialog"
         />
 
         <CopyDisplay
@@ -114,7 +115,7 @@
               <span class="ctrl-icon">🔍</span>
               <span class="ctrl-text">
                 <span class="ctrl-label">识图</span>
-                <span class="ctrl-desc">识别商品品牌、型号、品类</span>
+                <span class="ctrl-desc">识别商品品牌、型号、品类并允许人工校正</span>
               </span>
               <span class="cost-tag free">免费</span>
             </button>
@@ -132,7 +133,7 @@
               <span class="ctrl-icon">🖼️</span>
               <span class="ctrl-text">
                 <span class="ctrl-label">生成图片</span>
-                <span class="ctrl-desc">手动可读可改 Prompt，生成平台适配商品图</span>
+                <span class="ctrl-desc">预计等待约 3 分钟，退出后可到历史记录查看</span>
               </span>
               <span class="cost-tag">⭐ 8</span>
             </button>
@@ -153,6 +154,7 @@
             <div class="task-line">任务 #{{ workflow.taskId || '--' }}</div>
             <div class="task-line">状态：{{ statusText }}</div>
             <div v-if="workflow.imageJob?.jobId" class="task-line mono">外部任务：{{ workflow.imageJob.jobId }}</div>
+            <div v-if="workflow.imageJob?.jobId" class="task-tip">提示：图片生成通常约需 3 分钟，若中途退出可前往历史记录查看。</div>
           </div>
 
           <div v-if="workflow.error" class="error-box">⚠️ {{ workflow.error }}</div>
@@ -171,6 +173,43 @@
         />
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="recognitionDialog.show" class="modal-overlay" @click.self="closeRecognitionDialog">
+        <div class="modal-card card">
+          <div class="card-header">
+            <h3>确认识别结果</h3>
+            <button class="btn btn-ghost btn-sm" @click="closeRecognitionDialog">关闭</button>
+          </div>
+          <div class="field-grid">
+            <div class="field-group">
+              <label class="field-label">品牌</label>
+              <input v-model="recognitionDialog.form.brand" class="input" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">商品名称</label>
+              <input v-model="recognitionDialog.form.productName" class="input" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">品类</label>
+              <input v-model="recognitionDialog.form.category" class="input" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">置信度</label>
+              <input v-model="recognitionDialog.form.confidence" class="input" />
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">特征</label>
+            <textarea v-model="recognitionDialog.form.description" class="input textarea"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-accent" @click="confirmRecognitionDialog">确认无误</button>
+            <button class="btn btn-ghost" @click="closeRecognitionDialog">取消</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <Teleport to="body">
       <div v-if="promptDialog.show" class="modal-overlay" @click.self="closePromptDialog">
@@ -231,6 +270,16 @@ const promptDialog = ref({
   userPrompt: '',
   executing: false,
 });
+const recognitionDialog = ref({
+  show: false,
+  form: {
+    brand: '',
+    productName: '',
+    category: '',
+    description: '',
+    confidence: '',
+  },
+});
 
 const statusText = computed(() => {
   const status = workflow.taskStatus || workflow.imageJob?.status;
@@ -264,7 +313,7 @@ async function loadPoints() {
     checkedIn.value = data.checkedIn;
     if (auth.user) auth.user.points = data.points;
   } catch (e) {
-    /* ignore */
+      /* ignore */
   }
 }
 
@@ -350,16 +399,61 @@ function handleReset() {
   stopPolling();
   workflow.reset();
   uploadError.value = '';
+  closeRecognitionDialog();
+  closePromptDialog();
   showToast('已重置');
 }
 
 async function handleRecognize() {
   try {
-    await workflow.recognizeProduct();
-    showToast('商品识别完成');
+    const result = await workflow.recognizeProduct();
+    recognitionDialog.value = {
+      show: true,
+      form: {
+        brand: result.brand || '',
+        productName: result.productName || '',
+        category: result.category || '',
+        description: result.description || '',
+        confidence: result.confidence || '',
+      },
+    };
+    showToast('识别完成，请确认结果后继续');
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+function openRecognitionDialog() {
+  if (!workflow.recognition) return;
+  recognitionDialog.value = {
+    show: true,
+    form: {
+      brand: workflow.recognition.brand || '',
+      productName: workflow.recognition.productName || '',
+      category: workflow.recognition.category || '',
+      description: workflow.recognition.description || '',
+      confidence: workflow.recognition.confidence || '',
+    },
+  };
+}
+
+function confirmRecognitionDialog() {
+  workflow.confirmRecognition({ ...recognitionDialog.value.form });
+  closeRecognitionDialog();
+  showToast('识别结果已确认，可继续生成文案与图片');
+}
+
+function closeRecognitionDialog() {
+  recognitionDialog.value = {
+    show: false,
+    form: {
+      brand: '',
+      productName: '',
+      category: '',
+      description: '',
+      confidence: '',
+    },
+  };
 }
 
 async function handleGenerateCopy() {
@@ -389,6 +483,7 @@ async function handleGenerateImage() {
       userPrompt: preview.userPrompt,
       executing: false,
     };
+    showToast('图片生成通常约需 3 分钟，如中途退出可前往历史记录查看');
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -399,7 +494,7 @@ async function handleRunPipeline() {
     await workflow.runFullPipeline();
     await auth.refreshPoints();
     startPolling();
-    showToast('全链路执行中 (-10 积分)');
+    showToast('全链路执行中，图片生成通常约需 3 分钟 (-10 积分)');
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -413,7 +508,7 @@ async function handleManualWorkflow() {
       templateId: workflow.selectedTemplateId,
       variables: workflow.templateVariables,
     });
-    workflow.recognition = preview.recognition;
+    workflow.confirmRecognition(preview.recognition);
     workflow.copyPromptDraft = preview.copyPrompt;
     workflow.imagePromptDraft = preview.imagePrompt;
     promptDialog.value = {
@@ -444,7 +539,7 @@ async function confirmPromptDialog() {
       await workflow.generateImage({ promptOverride: promptDialog.value.userPrompt });
       await auth.refreshPoints();
       startPolling();
-      showToast('图片生成任务已提交 (-8 积分)');
+      showToast('图片生成任务已提交，预计约 3 分钟完成 (-8 积分)');
       closePromptDialog();
       return;
     }
@@ -471,7 +566,7 @@ async function confirmPromptDialog() {
       });
       await auth.refreshPoints();
       startPolling();
-      showToast('手动全链路执行中 (-10 积分)');
+      showToast('手动全链路执行中，图片生成通常约需 3 分钟 (-10 积分)');
       closePromptDialog();
     }
   } catch (e) {
@@ -762,6 +857,13 @@ onUnmounted(() => stopPolling());
   color: var(--dewu-text-secondary);
   font-size: 13px;
   line-height: 1.7;
+}
+
+.task-tip {
+  margin-top: 6px;
+  color: var(--dewu-gold);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .mono {
