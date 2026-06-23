@@ -9,7 +9,8 @@
     </div>
 
     <div class="note-card">
-      <div class="note-cover">
+      <div class="note-cover" :class="{ empty: !coverImage }">
+        <img v-if="coverImage" :src="coverImage" alt="小红书封面预览" class="cover-image" />
         <div class="cover-overlay">
           <div class="cover-copy">{{ data.coverText || data.title || '等待生成封面文案...' }}</div>
         </div>
@@ -26,6 +27,12 @@
 
         <div class="title">{{ data.title || '等待生成标题...' }}</div>
         <div class="content multiline">{{ data.content || '等待生成正文...' }}</div>
+
+        <div class="image-grid" v-if="galleryImages.length > 1">
+          <div v-for="(img, index) in galleryImages.slice(1)" :key="index" class="grid-image-wrap">
+            <img :src="img" alt="小红书配图" class="grid-image" />
+          </div>
+        </div>
 
         <div class="tag-list" v-if="tagList.length">
           <span v-for="tag in tagList" :key="tag" class="tag-chip">{{ tag }}</span>
@@ -44,10 +51,13 @@ import { computed } from 'vue';
 
 const props = defineProps({
   data: { type: Object, default: () => ({}) },
+  generatedImages: { type: Array, default: () => [] },
 });
 
 const tagList = computed(() => Array.isArray(props.data.tags) ? props.data.tags : []);
 const hashtagList = computed(() => Array.isArray(props.data.hashtags) ? props.data.hashtags : []);
+const galleryImages = computed(() => props.generatedImages.map(item => typeof item === 'string' ? item : item?.url).filter(Boolean));
+const coverImage = computed(() => galleryImages.value[0] || '');
 </script>
 
 <style scoped>
@@ -88,12 +98,25 @@ const hashtagList = computed(() => Array.isArray(props.data.hashtags) ? props.da
   position: relative;
 }
 
+.note-cover.empty {
+  background: linear-gradient(135deg, #f9d7c7, #f5b67a 55%, #e68354 100%);
+}
+
+.cover-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .cover-overlay {
   position: absolute;
   inset: 0;
   padding: 22px;
   display: flex;
   align-items: flex-end;
+  background: linear-gradient(transparent, rgba(0,0,0,0.25));
 }
 
 .cover-copy {
@@ -154,6 +177,26 @@ const hashtagList = computed(() => Array.isArray(props.data.hashtags) ? props.da
 
 .multiline {
   white-space: pre-wrap;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.grid-image-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eee;
+  aspect-ratio: 1;
+}
+
+.grid-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .tag-list,

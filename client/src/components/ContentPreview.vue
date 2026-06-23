@@ -40,7 +40,11 @@ const previewProps = computed(() => {
       hashtags: props.copyData?.hashtags || [],
     };
   }
-  return { data: props.copyData || {} };
+  return {
+    data: props.copyData || {},
+    generatedImages: props.generatedImages || [],
+    recognitionData: props.recognitionData || {},
+  };
 });
 
 function handleDownload(...args) {

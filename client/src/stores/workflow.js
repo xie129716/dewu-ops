@@ -153,6 +153,14 @@ export const useWorkflowStore = defineStore('workflow', () => {
     processing.value = true;
     error.value = null;
     try {
+      const keepPlatform = selectedPlatform.value;
+      const keepTemplateId = selectedTemplateId.value;
+      const keepVariables = { ...templateVariables.value };
+      reset();
+      selectedPlatform.value = keepPlatform;
+      selectedTemplateId.value = keepTemplateId;
+      templateVariables.value = keepVariables;
+
       const formData = new FormData();
       formData.append('image', file);
       const data = await api.post('/upload', formData, {

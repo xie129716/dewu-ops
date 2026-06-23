@@ -9,6 +9,10 @@
     </div>
 
     <div class="article-shell">
+      <div v-if="heroImage" class="hero-wrap">
+        <img :src="heroImage" alt="公众号头图" class="hero-image" />
+      </div>
+
       <div class="article-meta">品牌内容实验室 · 图文推送</div>
       <div class="article-title">{{ data.articleTitle || '等待生成文章标题...' }}</div>
       <div class="article-author">作者：内容运营助手 · 阅读 1.2k</div>
@@ -30,6 +34,12 @@
         <div class="section-content multiline">{{ data.body }}</div>
       </div>
 
+      <div class="inline-image-grid" v-if="galleryImages.length > 1">
+        <div v-for="(img, index) in galleryImages.slice(1)" :key="index" class="inline-image-wrap">
+          <img :src="img" alt="公众号插图" class="inline-image" />
+        </div>
+      </div>
+
       <div class="preview-section" v-if="data.cta">
         <span class="section-label">行动号召</span>
         <div class="cta-box">{{ data.cta }}</div>
@@ -47,10 +57,13 @@ import { computed } from 'vue';
 
 const props = defineProps({
   data: { type: Object, default: () => ({}) },
+  generatedImages: { type: Array, default: () => [] },
 });
 
 const outlineList = computed(() => Array.isArray(props.data.outline) ? props.data.outline : []);
 const keywordList = computed(() => Array.isArray(props.data.keywords) ? props.data.keywords : []);
+const galleryImages = computed(() => props.generatedImages.map(item => typeof item === 'string' ? item : item?.url).filter(Boolean));
+const heroImage = computed(() => galleryImages.value[0] || '');
 </script>
 
 <style scoped>
@@ -83,6 +96,19 @@ const keywordList = computed(() => Array.isArray(props.data.keywords) ? props.da
   color: #222;
   border-radius: 16px;
   padding: 24px;
+}
+
+.hero-wrap {
+  margin: -24px -24px 18px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #eee;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .article-meta {
@@ -150,6 +176,26 @@ const keywordList = computed(() => Array.isArray(props.data.keywords) ? props.da
   padding-left: 18px;
   color: #444;
   line-height: 1.9;
+}
+
+.inline-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.inline-image-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eee;
+  aspect-ratio: 4 / 3;
+}
+
+.inline-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .keywords {
