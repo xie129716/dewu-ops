@@ -5,6 +5,7 @@ const authMiddleware = require('../middleware/auth');
 const { submitImageTask, submitImageEdit, getTaskStatus } = require('../services/img65535');
 const { deductPoints, updateHistoryStatus } = require('../services/storage');
 const { buildImagePromptPreview } = require('../services/prompts');
+const { cacheRemoteImages } = require('../services/assetCache');
 const {
   createQueuedTask,
   markTaskRunning,
@@ -110,6 +111,10 @@ router.post('/edit', authMiddleware.requirePoints(POINT_COST), authMiddleware.re
 router.get('/status/:jobId', async (req, res) => {
   try {
     const result = await getTaskStatus(req.params.jobId, req.user.id);
+    if (result.status === 'done') {
+      const localUrls = await cacheRemoteImages(result.resultUrls || []);
+      return res.json({ success: true, ...result, resultUrls: localUrls });
+    }
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
