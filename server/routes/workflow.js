@@ -21,11 +21,11 @@ router.use(authMiddleware);
 
 router.post('/preview', authMiddleware.requirePermission('prompt.view_manual'), async (req, res) => {
   try {
-    const { imageUrl, platformKey = 'dewu', templateId, variables = {}, copyPromptOverride = '', imagePromptOverride = '' } = req.body;
+    const { imageUrl, platformKey = 'dewu', templateId, variables = {}, copyPromptOverride = '', imagePromptOverride = '', recognitionOverride = null } = req.body;
     if (!imageUrl) return res.status(400).json({ error: '缺少 imageUrl 参数' });
 
     const localPath = path.join(__dirname, '..', imageUrl);
-    const recognition = await recognizeProduct(localPath, req.user.id);
+    const recognition = recognitionOverride || await recognizeProduct(localPath, req.user.id);
     const copyPrompt = buildCopyPromptPreview({
       productInfo: recognition,
       platformKey,
@@ -62,6 +62,7 @@ router.post('/run', authMiddleware.requirePoints(POINT_COST), authMiddleware.req
     platformKey = 'dewu',
     templateId = null,
     variables = {},
+    recognitionOverride = null,
   } = req.body;
 
   const normalizedPlatformKey = normalizePlatformKey(platformKey);
@@ -87,7 +88,7 @@ router.post('/run', authMiddleware.requirePoints(POINT_COST), authMiddleware.req
       taskId: task.id,
     };
 
-    const recognition = await recognizeProduct(localPath, req.user.id);
+    const recognition = recognitionOverride || await recognizeProduct(localPath, req.user.id);
     results.recognition = recognition;
 
     const copyPrompt = buildCopyPromptPreview({
@@ -188,6 +189,7 @@ router.post('/run-manual', authMiddleware.requirePoints(POINT_COST), authMiddlew
     copyPromptOverride = '',
     imagePromptOverride = '',
     imageSize,
+    recognitionOverride = null,
   } = req.body;
 
   const normalizedPlatformKey = normalizePlatformKey(platformKey);
@@ -205,7 +207,7 @@ router.post('/run-manual', authMiddleware.requirePoints(POINT_COST), authMiddlew
 
     markTaskRunning(task.id, { progress_step: 'recognize', progress_message: '正在识别商品' });
     const localPath = path.join(__dirname, '..', imageUrl);
-    const recognition = await recognizeProduct(localPath, req.user.id);
+    const recognition = recognitionOverride || await recognizeProduct(localPath, req.user.id);
 
     const copyPrompt = buildCopyPromptPreview({
       productInfo: recognition,
