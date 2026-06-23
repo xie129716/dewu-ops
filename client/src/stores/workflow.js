@@ -397,7 +397,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
-  async function runFullPipeline({ copyStyle = '', imageSize = '2048x2048' } = {}) {
+  async function runFullPipeline({ copyStyle = '', imageSize = '2048x2048', recognitionOverride = null } = {}) {
     if (!uploadedImage.value) throw new Error('请先上传图片');
     processing.value = true;
     error.value = null;
@@ -410,6 +410,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         platformKey: selectedPlatform.value,
         templateId: selectedTemplateId.value,
         variables: templateVariables.value,
+        recognitionOverride: recognitionOverride || compactRecognition(recognition.value),
       });
 
       recognition.value = data.recognition;
@@ -445,7 +446,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
-  async function runManualWorkflow({ copyPromptOverride = '', imagePromptOverride = '', imageSize = '2048x2048' } = {}) {
+  async function runManualWorkflow({ copyPromptOverride = '', imagePromptOverride = '', imageSize = '2048x2048', recognitionOverride = null } = {}) {
     if (!uploadedImage.value) throw new Error('请先上传图片');
     processing.value = true;
     error.value = null;
@@ -459,6 +460,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         copyPromptOverride,
         imagePromptOverride,
         imageSize,
+        recognitionOverride: recognitionOverride || compactRecognition(recognition.value),
       });
 
       recognition.value = data.recognition;

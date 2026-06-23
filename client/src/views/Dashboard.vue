@@ -442,14 +442,15 @@ function openRecognitionDialog() {
 
 async function confirmRecognitionDialog() {
   const continueAction = recognitionDialog.value.continueAction;
-  workflow.confirmRecognition({ ...recognitionDialog.value.form });
+  const confirmedRecognition = { ...recognitionDialog.value.form };
+  workflow.confirmRecognition(confirmedRecognition);
   closeRecognitionDialog();
   showToast('识别结果已确认，可继续生成文案与图片');
 
   if (continueAction === 'runPipeline') {
-    await executeRunPipeline();
+    await executeRunPipeline(confirmedRecognition);
   } else if (continueAction === 'runManualWorkflow') {
-    await executeManualWorkflow();
+    await executeManualWorkflow(confirmedRecognition);
   }
 }
 
@@ -510,9 +511,9 @@ async function handleGenerateImage() {
   }
 }
 
-async function executeRunPipeline() {
+async function executeRunPipeline(recognitionOverride = null) {
   try {
-    await workflow.runFullPipeline();
+    await workflow.runFullPipeline({ recognitionOverride });
     await auth.refreshPoints();
     startPolling();
     showToast('全链路执行中，图片生成通常约需 3 分钟 (-10 积分)');
@@ -545,14 +546,15 @@ async function handleRunPipeline() {
   await executeRunPipeline();
 }
 
-async function executeManualWorkflow() {
+async function executeManualWorkflow(recognitionOverride = null) {
   try {
+    const effectiveRecognition = recognitionOverride || workflow.recognition || undefined;
     const preview = await api.post('/workflow/preview', {
       imageUrl: workflow.uploadedImage?.imageUrl,
       platformKey: workflow.selectedPlatform,
       templateId: workflow.selectedTemplateId,
       variables: workflow.templateVariables,
-      recognitionOverride: workflow.recognition || undefined,
+      recognitionOverride: effectiveRecognition,
     });
     workflow.copyPromptDraft = preview.copyPrompt;
     workflow.imagePromptDraft = preview.imagePrompt;
@@ -632,6 +634,7 @@ async function confirmPromptDialog() {
       await workflow.runManualWorkflow({
         copyPromptOverride: workflow.copyPromptDraft?.userPrompt || '',
         imagePromptOverride: promptDialog.value.userPrompt,
+        recognitionOverride: workflow.recognition || undefined,
       });
       await auth.refreshPoints();
       startPolling();
