@@ -552,7 +552,7 @@ async function executeManualWorkflow() {
       platformKey: workflow.selectedPlatform,
       templateId: workflow.selectedTemplateId,
       variables: workflow.templateVariables,
-      productInfo: workflow.recognition || undefined,
+      recognitionOverride: workflow.recognition || undefined,
     });
     workflow.copyPromptDraft = preview.copyPrompt;
     workflow.imagePromptDraft = preview.imagePrompt;

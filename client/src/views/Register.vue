@@ -3,7 +3,7 @@
     <div class="auth-card">
       <div class="auth-header">
         <span class="auth-icon">👟</span>
-        <h1>得物运营系统</h1>
+        <h1>多平台运营系统</h1>
         <p>创建你的账号</p>
       </div>
 
