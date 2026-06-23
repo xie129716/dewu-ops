@@ -111,12 +111,15 @@ router.post('/edit', authMiddleware.requirePoints(POINT_COST), authMiddleware.re
 router.get('/status/:jobId', async (req, res) => {
   try {
     const result = await getTaskStatus(req.params.jobId, req.user.id);
+    console.log('[Image Status] job=', req.params.jobId, 'raw resultUrls=', JSON.stringify(result.resultUrls || []));
     if (result.status === 'done') {
       const localUrls = await cacheRemoteImages(result.resultUrls || []);
+      console.log('[Image Status] job=', req.params.jobId, 'cached resultUrls=', JSON.stringify(localUrls));
       return res.json({ success: true, ...result, resultUrls: localUrls });
     }
     res.json({ success: true, ...result });
   } catch (err) {
+    console.error('[Image Status] error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

@@ -19,8 +19,10 @@ function extFromContentType(contentType = '') {
 
 async function cacheRemoteImage(url) {
   ensureDir();
+  console.log('[AssetCache] start download:', url);
   const response = await fetch(url);
   if (!response.ok) {
+    console.error('[AssetCache] download failed:', url, response.status);
     throw new Error(`下载远程图片失败 (${response.status})`);
   }
   const contentType = response.headers.get('content-type') || '';
@@ -31,8 +33,13 @@ async function cacheRemoteImage(url) {
   const filePath = path.join(GENERATED_DIR, filename);
   if (!fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, buffer);
+    console.log('[AssetCache] wrote file:', filePath, 'bytes=', buffer.length);
+  } else {
+    console.log('[AssetCache] file exists, reuse:', filePath);
   }
-  return `/uploads/generated/${filename}`;
+  const publicUrl = `/uploads/generated/${filename}`;
+  console.log('[AssetCache] return public url:', publicUrl);
+  return publicUrl;
 }
 
 async function cacheRemoteImages(urls = []) {
@@ -40,10 +47,12 @@ async function cacheRemoteImages(urls = []) {
   for (const url of urls) {
     try {
       results.push(await cacheRemoteImage(url));
-    } catch (_) {
+    } catch (err) {
+      console.error('[AssetCache] fallback to remote url due to error:', url, err.message);
       results.push(url);
     }
   }
+  console.log('[AssetCache] final urls:', JSON.stringify(results));
   return results;
 }
 

@@ -88,7 +88,9 @@ router.post('/sync-external', authMiddleware.requireAnyPermission(['task.view', 
       try {
         const status = await getTaskStatus(task.external_job_id, task.user_id);
         if (status.status === 'done') {
+          console.log('[Tasks Sync] task=', task.id, 'raw resultUrls=', JSON.stringify(status.resultUrls || []));
           const localUrls = await cacheRemoteImages(status.resultUrls || []);
+          console.log('[Tasks Sync] task=', task.id, 'cached resultUrls=', JSON.stringify(localUrls));
           const completedTask = markTaskCompleted(task.id, {
             output_json: { ...status, resultUrls: localUrls },
             progress_message: '外部图片任务已完成',
