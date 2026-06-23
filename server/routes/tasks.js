@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { getTaskStatus } = require('../services/img65535');
 const { updateHistoryStatus } = require('../services/storage');
+const { cacheRemoteImages } = require('../services/assetCache');
 const {
   listTasks,
   getPendingExternalTasks,
@@ -87,14 +88,15 @@ router.post('/sync-external', authMiddleware.requireAnyPermission(['task.view', 
       try {
         const status = await getTaskStatus(task.external_job_id, task.user_id);
         if (status.status === 'done') {
+          const localUrls = await cacheRemoteImages(status.resultUrls || []);
           const completedTask = markTaskCompleted(task.id, {
-            output_json: status,
+            output_json: { ...status, resultUrls: localUrls },
             progress_message: '外部图片任务已完成',
           });
           if (task.history_id) {
             updateHistoryStatus(task.user_id, task.history_id, {
               status: 'completed',
-              generated_images: status.resultUrls,
+              generated_images: localUrls,
               job_id: task.external_job_id,
               task_id: task.id,
             });

@@ -60,14 +60,16 @@ router.post('/sync', authMiddleware.requirePermission('history.view'), async (re
       try {
         const status = await getTaskStatus(task.external_job_id, task.user_id);
         if (status.status === 'done') {
+          const { cacheRemoteImages } = require('../services/assetCache');
+          const localUrls = await cacheRemoteImages(status.resultUrls || []);
           markTaskCompleted(task.id, {
-            output_json: status,
+            output_json: { ...status, resultUrls: localUrls },
             progress_message: '历史同步：图片任务已完成',
           });
           if (task.history_id) {
             updateHistoryStatus(task.user_id, task.history_id, {
               status: 'completed',
-              generated_images: status.resultUrls,
+              generated_images: localUrls,
               job_id: task.external_job_id,
               task_id: task.id,
             });
