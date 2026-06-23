@@ -128,11 +128,12 @@ router.post('/tasks/:taskId/sync', async (req, res) => {
     if (!taskId) return res.status(400).json({ error: '缺少 taskId' });
     const status = await getTaskStatus(req.body.externalJobId || task?.external_job_id, req.user.id);
     if (status.status === 'done') {
+      const localUrls = await cacheRemoteImages(status.resultUrls || []);
       const completedTask = markTaskCompleted(taskId, {
-        output_json: status,
+        output_json: { ...status, resultUrls: localUrls },
         progress_message: '图片生成已完成',
       });
-      return res.json({ success: true, task: completedTask, ...status });
+      return res.json({ success: true, task: completedTask, ...status, resultUrls: localUrls });
     }
     if (status.status === 'failed') {
       const failedTask = markTaskFailed(taskId, new Error(status.errorMessage || '图片生成失败'), {
